@@ -1,6 +1,6 @@
 /*=============================================================================
 
-    SMAA 1x - standalone HLSL implementation for D3D12 and Vulkan
+    SMAA 1x - standalone HLSL implementation for D3D12, Vulkan, and SM5/DXBC
 
     The SMAA algorithm, area texture and search texture were created by
     Jorge Jimenez, Jose I. Echevarria, Tiago Sousa and Diego Gutierrez, and
@@ -82,17 +82,22 @@
         dxc -T ps_6_0 -E SMAAResolvePS        SMAA.hlsl
         dxc -T vs_6_0 -E SMAAFullscreenVS     SMAA.hlsl
 
-        SM5 fallback:
-        dxc -T cs_5_0 -E SMAABlendWeightsCS   -DSMAA_USE_SM6=0 SMAA.hlsl
-        dxc -T ps_5_0 -E SMAAResolvePS        -DSMAA_USE_SM6=0 -DSMAA_ENABLE_COMPUTE=0 SMAA.hlsl
+        SM5/DXBC fallback (FXC; DXC does not accept SM5 profiles):
+        fxc /T vs_5_0 /E SMAAFullscreenVS     /DSMAA_USE_SM6=0 SMAA.hlsl
+        fxc /T cs_5_0 /E SMAAEdgeDetectionCS  /DSMAA_USE_SM6=0 SMAA.hlsl
+        fxc /T cs_5_0 /E SMAABlendWeightsCS   /DSMAA_USE_SM6=0 SMAA.hlsl
+        fxc /T ps_5_0 /E SMAAResolvePS        /DSMAA_USE_SM6=0 SMAA.hlsl
+        The define is required for every entry point, including the vertex
+        shader, because SMAA_USE_SM6=1 is rejected below shader model 6.
 
     Vulkan examples:
         dxc -T cs_6_0 -E SMAAEdgeDetectionCS -spirv -DSMAA_VULKAN=1 SMAA.hlsl
         dxc -T cs_6_0 -E SMAABlendWeightsCS  -spirv -DSMAA_VULKAN=1 SMAA.hlsl
         dxc -T ps_6_0 -E SMAAResolvePS       -spirv -DSMAA_VULKAN=1 SMAA.hlsl
 
-    For Vulkan, target a Vulkan 1.1+ environment so that subgroup
-    operations are available when SMAA_USE_SM6=1.
+        Add -DSMAA_USE_SM6=0 for the groupshared-atomic fallback. For Vulkan,
+        target a Vulkan 1.1+ environment so that subgroup operations are
+        available when SMAA_USE_SM6=1.
 
     -------------------------------------------------------------------------
     RESOURCES
@@ -104,7 +109,7 @@
         t1  ColorTexLinear      sRGB SRV for resolve
         t2  EdgesTex            R8G8_UNORM SRV
         t3  BlendTex            R8G8B8A8_UNORM SRV
-        t4  AreaLUT             R8G8B8A8_UNORM SRV
+        t4  AreaLUT             R8G8_UNORM SRV
         t5  SearchLUT           R8_UNORM SRV
         t6  EdgeMaskTex         R32_SINT SRV
         u0  EdgesTexRW          R8G8_UNORM UAV
@@ -244,7 +249,7 @@
 
 // D3D12 uses registers; Vulkan uses explicit descriptor set bindings.
 #if SMAA_VULKAN
-#define SMAA_BINDING(binding, set) [[vk::binding(binding, set)]]
+#define SMAA_BINDING(b, s) [[vk::binding(b, s)]]
 #define SMAA_IMAGE_FORMAT(format)  [[vk::image_format(format)]]
 #define SMAA_REGISTER(type, reg)
 #else

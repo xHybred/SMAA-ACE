@@ -1,12 +1,26 @@
 <p align="center">
-  <img src="docs/hero.svg" alt="SMAA 1x compute-optimized HLSL for D3D12 and Vulkan" width="100%">
+  <img src="docs/hero.svg" alt="SMAA 1x compute-optimized HLSL for D3D12, Vulkan, and SM5/DXBC targets" width="100%">
 </p>
 
 # SMAA HLSL
 
-**Compute-shader SMAA 1x for D3D12 and Vulkan.** A standalone HLSL implementation with the original MIT SMAA math and lookup textures, a compacted edge-pixel pipeline, and a D3D12 demo that measures it against the original 2013 pixel-shader path.
+**Compute-shader SMAA 1x for D3D12, Vulkan, and SM5/DXBC targets.** A standalone HLSL implementation with the original MIT SMAA math and lookup textures and a compacted edge-pixel pipeline. The bundled D3D12 demo is a validation and benchmarking harness, not the product.
 
-`D3D12` · `Vulkan` · `HLSL` · `SMAA 1x` · `MIT`
+`D3D12` · `Vulkan` · `D3D11/SM5` · `HLSL` · `SMAA 1x` · `MIT`
+
+## Shader targets
+
+The shader is the primary artifact. It is API-agnostic HLSL with two binding models and two compaction paths:
+
+| Target | Status |
+| --- | --- |
+| D3D12 + SM6 | Default path. Demo and benchmarks validated on Windows. |
+| Vulkan + SM6 | Compiles to SPIR-V with DXC. No Vulkan host or runtime validation is included. |
+| Vulkan + SM5 | Compiles to SPIR-V with DXC and `SMAA_USE_SM6=0`. No runtime validation. |
+| D3D11-class SM5/DXBC | Compiles with FXC to `vs_5_0`, `cs_5_0`, and `ps_5_0`. No DX11 host or demo is included. |
+| Other HLSL targets | Not validated. Porting is up to the host. |
+
+DXC compiles Shader Model 6 and SPIR-V, not SM5 profiles. Use FXC for the DXBC paths. On some D3D11-class devices, `R8G8_UNORM` typed UAV support is unavailable; use an RGBA8 edge texture and adjust the declared format. See [docs/INTEGRATION.md](docs/INTEGRATION.md).
 
 ## Why this port exists
 
@@ -38,7 +52,7 @@ The edge pass itself is not faster. The gain comes from compaction and from avoi
 | **On-chip mask clear** | The first 32 threads clear the groupshared mask words. No full-resolution mask texture is allocated or cleared. |
 | **Active-pixel compaction** | Edge pixels are compacted into a 512-slot groupshared queue. Only queued pixels run the blend-weight search, LUT sampling, and weight write. |
 | **SM6 wave compaction** | `WaveActiveCountBits`, one atomic per wave per batch, and `WavePrefixCountBits` produce the active list with minimal atomic traffic. |
-| **SM5 fallback** | A per-active-pixel atomic path is available with `SMAA_USE_SM6=0`, so the shader is not limited to Shader Model 6 wave intrinsics. |
+| **SM5 fallback** | A per-active-pixel groupshared-atomic path is available with `SMAA_USE_SM6=0`, so the shader is not limited to Shader Model 6 wave intrinsics. Compile it with FXC for D3D11-class targets; this is a shader-model path, not an included DX11 backend. |
 | **Edge-only writes** | The edge compute shader writes `EdgesTex` only when an edge is present; it does not store zeros for inactive pixels. The host must still clear `EdgesTex` and `BlendTex` each frame because blend searches read neighboring texels. |
 | **Mask supplies the blend edge pair** | The blend pass reads the 2-bit edge code from the tile mask instead of fetching `EdgesTex` per pixel. |
 | **Direct integer loads** | Edge detection and the first diagonal search use exact integer `Load` operations instead of filtered samples. The second diagonal search intentionally remains bilinear because its quarter-pixel offset encodes crossing-edge information. |
@@ -112,16 +126,16 @@ Against 4x SSAA at 4K 3D, it lowers MAE from 0.00033556 to 0.00032792 and pixels
 
 ## Install and build
 
-No prebuilt binaries or NuGet package are distributed. Build the demo from source, or copy the shader and LUTs into your own project.
+No prebuilt binaries or NuGet package are distributed. Most users should copy `SMAA.hlsl` and the LUTs into an existing renderer. Build the demo only if you want to run the reference comparison and timing harness.
 
-Requirements:
+### Demo requirements
 
 - Windows 10 or 11
 - A D3D12-capable GPU and driver
 - The .NET 8 SDK
 - The DXC shader compiler is used at runtime through Vortice.Dxc; no separate shader build step is required for the demo
 
-NuGet restores Vortice.Direct3D12, Vortice.DXGI, and Vortice.Dxc automatically.
+NuGet restores Vortice.Direct3D12, Vortice.DXGI, and Vortice.Dxc automatically. None of these requirements apply to the standalone shader.
 
 From the repository root:
 
@@ -136,20 +150,22 @@ The project copies `SMAA.hlsl`, the reference shaders, and the LUTs into the out
 
 | Script | Resolution |
 | --- | --- |
-| `run-720p.bat` | 1280x720 |
-| `run-1080p.bat` | 1920x1080 |
-| `run-1440p.bat` | 2560x1440 |
-| `run-2160p.bat` | 3840x2160 |
+| `Demo\run-720p.bat` | 1280x720 |
+| `Demo\run-1080p.bat` | 1920x1080 |
+| `Demo\run-1440p.bat` | 2560x1440 |
+| `Demo\run-2160p.bat` | 3840x2160 |
 
 Example: run 1440p for 300 frames with the debug layer disabled.
 
 ```powershell
-.\run-1440p.bat --frames 300 --no-debug-layer
+.\Demo\run-1440p.bat --frames 300 --no-debug-layer
 ```
 
 ### Use in your renderer
 
 This repository ships a shader, not an engine integration layer. Your renderer owns resources, descriptors, barriers, clears, and presentation. The full contract is in [docs/INTEGRATION.md](docs/INTEGRATION.md).
+
+The default build emits D3D12 register bindings. Define `SMAA_VULKAN=1` for Vulkan descriptor-set bindings, or compile with FXC plus `SMAA_USE_SM6=0` for the D3D11-class SM5 path.
 
 Minimal integration checklist:
 
@@ -169,7 +185,18 @@ dxc -T cs_6_0 -E SMAABlendWeightsCS -DSMAA_USE_SM6=1 SMAA.hlsl -Fo SMAABlendWeig
 dxc -T ps_6_0 -E SMAAResolvePS SMAA.hlsl -Fo SMAAResolvePS.cso
 ```
 
-For the SM5 fallback, use `cs_5_0` and `-DSMAA_USE_SM6=0`. For Vulkan SPIR-V, add `-spirv -DSMAA_VULKAN=1`; the Vulkan binding model and formats are documented in [docs/INTEGRATION.md](docs/INTEGRATION.md). The Vulkan path is provided by the shader but is not validated by this repository.
+DXC does not compile Shader Model 5 profiles. For the SM5/DXBC path, use FXC and define `SMAA_USE_SM6=0` for every entry point, including the vertex shader, because the shader rejects SM6 intrinsics below shader model 6:
+
+```bat
+fxc /nologo /T vs_5_0 /E SMAAFullscreenVS /DSMAA_USE_SM6=0 /Fo SMAAFullscreenVS.cso SMAA.hlsl
+fxc /nologo /T cs_5_0 /E SMAAEdgeDetectionCS /DSMAA_USE_SM6=0 /Fo SMAAEdgeDetectionCS.cso SMAA.hlsl
+fxc /nologo /T cs_5_0 /E SMAABlendWeightsCS /DSMAA_USE_SM6=0 /Fo SMAABlendWeightsCS.cso SMAA.hlsl
+fxc /nologo /T ps_5_0 /E SMAAResolvePS /DSMAA_USE_SM6=0 /Fo SMAAResolvePS.cso SMAA.hlsl
+```
+
+Add `SMAAEdgeDetectionLowContrastCS` with `cs_5_0` only if you enable the optional low-contrast mode. The SM5 path compiles, but this repository ships no D3D11 host or runtime validation.
+
+For Vulkan SPIR-V, add `-spirv -DSMAA_VULKAN=1`. Both the SM6 wave path and the SM5 atomic fallback compile to SPIR-V with DXC. The Vulkan binding model and formats are documented in [docs/INTEGRATION.md](docs/INTEGRATION.md); no Vulkan host or runtime validation is included.
 
 ## Controls
 
@@ -223,15 +250,15 @@ dotnet run --project Demo/Demo.csproj -c Release -- --width 3840 --height 2160 -
 ├── LICENSE-SMAA.txt          MIT notice for the original SMAA authors
 ├── README.md
 ├── .gitignore
-├── run-720p.bat              Launch at 1280x720
-├── run-1080p.bat             Launch at 1920x1080
-├── run-1440p.bat             Launch at 2560x1440
-├── run-2160p.bat             Launch at 3840x2160
 ├── Demo/
 │   ├── Demo.csproj           D3D12 Vortice demo project
 │   ├── Program.cs            Renderer, CLI, modes, timing, screenshots
 │   ├── DemoScene.hlsl        Procedural raymarched 3D corridor
-│   └── DemoShaders.hlsl      Passthrough shaders for comparison modes
+│   ├── DemoShaders.hlsl      Passthrough shaders for comparison modes
+│   ├── run-720p.bat          Launch at 1280x720
+│   ├── run-1080p.bat         Launch at 1920x1080
+│   ├── run-1440p.bat         Launch at 2560x1440
+│   └── run-2160p.bat         Launch at 3840x2160
 ├── Reference/
 │   ├── AreaTex.rg8           SMAA area LUT, 160x560 RG8
 │   ├── SearchTex.r8          SMAA search LUT, 64x16 R8
@@ -255,7 +282,8 @@ dotnet run --project Demo/Demo.csproj -c Release -- --width 3840 --height 2160 -
 - **Performance is content-dependent.** Sparse-edge scenes benefit most. Dense, high-frequency content sees a smaller gain.
 - **Benchmarks are one GPU and one demo.** The numbers are not a universal guarantee across GPUs, drivers, resolutions, or engines.
 - **R8G8 UAV support is not universal.** Some older devices do not support RG8 storage images; use an RGBA8 edge texture and adjust the image format as noted in [docs/INTEGRATION.md](docs/INTEGRATION.md).
-- **Vulkan is provided but not validated here.** The shader emits Vulkan bindings with `SMAA_VULKAN=1`; the bundled demo is D3D12-only.
+- **The SM5/DXBC path has no bundled host.** All stock and low-contrast entry points compile with FXC to shader model 5, but this repository includes no D3D11 renderer, resource setup, or runtime validation for that path.
+- **Vulkan compiles, but is not runtime-validated here.** The shader emits Vulkan bindings with `SMAA_VULKAN=1` and compiles to SPIR-V with both compaction paths. The bundled demo is D3D12-only, so Vulkan descriptors, barriers, and presentation are left to the host.
 - **Low-contrast mode is tuned on procedural scenes.** It is opt-in for a reason. Validate it on your own content before shipping it.
 - **This is not a drop-in engine plugin.** You must provide resource creation, descriptors, dispatch, barriers, clears, and presentation.
 

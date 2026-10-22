@@ -151,4 +151,4 @@ A clean re-test reproduced the deterministic 4K captures exactly: mode 0 and mod
 - **Scene dependence:** edge density and screen coverage drive the blend pass. The sparse-edge 3D corridor finds much less edge work than the 2D stress pattern, so edge-dense content can produce substantially higher absolute numbers.
 - **Debug layer:** validation is enabled by default and adds CPU overhead. `--no-debug-layer` disables it; the clean GPU timings above use that flag. The debug-layer-on and -off GPU totals are within run-to-run variance.
 - **Scope:** these numbers cover SMAA only. Scene rendering, presentation, and any host-side work are excluded by the timestamp range.
-- **Vulkan:** no Vulkan benchmark was run. The Vulkan notes in [INTEGRATION.md](INTEGRATION.md) are integration guidance, not validated measurements.
+- **Vulkan and SM5:** no Vulkan or D3D11 runtime benchmark was run. Both shader paths compile, but the measurements here are D3D12/SM6 only. The API notes in [INTEGRATION.md](INTEGRATION.md) are integration guidance, not validated performance data.

@@ -4,7 +4,8 @@
 
 - Optimized path: `SMAAEdgeDetectionCS` -> `SMAABlendWeightsCS` -> `SMAAResolvePS`.
 - Comparison path: the original 2013 SMAA pixel shaders exposed by `Reference/SMAAReference.hlsl`.
-- The optimized compute path requires Shader Model 6.0 by default because it uses wave intrinsics.
+- The optimized compute path uses Shader Model 6.0 wave intrinsics by default. Compile with `SMAA_USE_SM6=0` for the groupshared-atomic SM5/DXBC fallback used by D3D11-class targets.
+- D3D12 register bindings are the default. Define `SMAA_VULKAN=1` for Vulkan descriptor-set bindings and DXC SPIR-V output.
 
 ## D3D12 resource contract
 
@@ -197,4 +198,19 @@ Use `VK_IMAGE_LAYOUT_GENERAL` for the storage images and `VK_IMAGE_LAYOUT_SHADER
 
 The default `SMAA_USE_SM6=1` path uses wave operations, which DXC lowers to subgroup operations. Target Vulkan 1.1+ and check that the device exposes the required subgroup support; if it does not, compile with `SMAA_USE_SM6=0` to use the groupshared-atomic fallback. `R8G8_UNORM` storage-image support is optional on some older devices; in that case use an RGBA8 edge texture and change the declared format and UAV type to match.
 
-The Vulkan path is provided by the shader but is **not validated by this repository**. The demo and all measurements in this project use D3D12.
+Both compaction paths compile to SPIR-V. The Vulkan path is **not runtime-validated by this repository**: the demo, descriptors, barriers, and measurements are D3D12-only.
+
+## SM5 and DXBC notes
+
+The shader model 5 path targets D3D11-class compute. DXC does not accept SM5 profiles, so use FXC:
+
+```bat
+fxc /nologo /T vs_5_0 /E SMAAFullscreenVS /DSMAA_USE_SM6=0 /Fo SMAAFullscreenVS.cso SMAA.hlsl
+fxc /nologo /T cs_5_0 /E SMAAEdgeDetectionCS /DSMAA_USE_SM6=0 /Fo SMAAEdgeDetectionCS.cso SMAA.hlsl
+fxc /nologo /T cs_5_0 /E SMAABlendWeightsCS /DSMAA_USE_SM6=0 /Fo SMAABlendWeightsCS.cso SMAA.hlsl
+fxc /nologo /T ps_5_0 /E SMAAResolvePS /DSMAA_USE_SM6=0 /Fo SMAAResolvePS.cso SMAA.hlsl
+```
+
+Define `SMAA_USE_SM6=0` for every entry point. The shader deliberately errors if the SM6 wave path is requested below shader model 6. The optional low-contrast entry compiles as `cs_5_0` with the same define.
+
+The SM5 path uses the same D3D register bindings. Typed UAV support varies on older D3D11-class hardware; if `R8G8_UNORM` storage is unsupported, use RGBA8 for `EdgesTex` and update the declared format and UAV type. No D3D11 host, resource setup, or runtime validation is included in this repository.
