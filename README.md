@@ -275,18 +275,17 @@ dotnet run --project Demo/Demo.csproj -c Release -- --width 3840 --height 2160 -
 - **Color-only edge detection.** The shader does not use depth, normals, or motion vectors.
 - **Two LUTs are required.** The area and search textures are part of the original MIT SMAA distribution and are included in `Reference/`.
 - **Not bit-identical to the 2013 reference.** Compute evaluation order changes the last bit on a small number of pixels. The measured maximum is 1/255 on 3D and 2/255 on 2D; flat regions are exact.
-- **The edge pass is not universally faster.** It is neutral on the 3D corridor and slightly slower on the dense 2D stress pattern. The total win comes primarily from compacting blend work.
 - **Performance is content-dependent.** Sparse-edge scenes benefit most. Dense, high-frequency content sees a smaller gain.
-- **Benchmarks are one GPU and one demo.** The numbers are not a universal guarantee across GPUs, drivers, resolutions, or engines.
 - **R8G8 UAV support is not universal.** Some older devices do not support RG8 storage images; use an RGBA8 edge texture and adjust the image format as noted in [docs/INTEGRATION.md](docs/INTEGRATION.md).
 - **The SM5/DXBC path has no bundled host.** All stock and low-contrast entry points compile with FXC to shader model 5, but this repository includes no D3D11 renderer, resource setup, or runtime validation for that path.
 - **Vulkan compiles, but is not runtime-validated here.** The shader emits Vulkan bindings with `SMAA_VULKAN=1` and compiles to SPIR-V with both compaction paths. The bundled demo is D3D12-only, so Vulkan descriptors, barriers, and presentation are left to the host.
 - **Low-contrast mode is tuned on procedural scenes.** Validate it on your own content before shipping it.
 
-## References
+## References & Credits
 
 - Jorge Jimenez, Jose I. Echevarria, Tiago Sousa, and Diego Gutierrez. "SMAA: Enhanced Subpixel Morphological Antialiasing." *Computer Graphics Forum*, 2012.
 - Original SMAA project: <https://github.com/iryoku/smaa>
+- PoisonLoca for creating the graphics for this repository 
 
 ## License
 
