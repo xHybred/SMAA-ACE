@@ -117,7 +117,7 @@ Flat regions are exact on the 3D scene.
 | 4K 3D | 0.169 ms | 0.248 ms | 0.352 ms |
 | 4K 2D stress | 0.545 ms | 0.620-0.641 ms | 0.858 ms |
 
-The mode costs roughly **40-55% more than the optimized stock path in 3D**, concentrated in edge detection: the 4K edge pass rises from 0.058 ms to 0.129 ms because it reads a 3x3 neighborhood and detects more edges. It remains faster than the original 2013 path at the tested resolutions.
+The LCE mode is 21-32% faster than the original SMAA but 40-55% slower than the default SMAA-ACE optimized path in 3D.
 
 Against 4x SSAA at 4K 3D, it lowers MAE from 0.00033556 to 0.00032792 and pixels above 10/255 from 0.2220% to 0.1965%, with flat regions unchanged. The tradeoff is a small reduction in high-frequency energy (slightly softer edges) and a small increase in pixels changed by just over 1/255. The thresholds were tuned on the procedural demo scenes; real-content results may vary. It is **off by default**.
 
