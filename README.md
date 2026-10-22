@@ -108,7 +108,7 @@ Flat regions are exact on the 3D scene.
 
 ### Low-contrast edge mode (opt-in)
 
-`--low-contrast-edge` enables a separate edge detector for low-contrast jaggies. It combines a luma-adaptive threshold with CMAA-style local contrast suppression and an adjacent-extreme LCA term. It does not add a blur, smoothing, or sharpening pass.
+`--low-contrast-edge` enables a separate edge detector for low-contrast jaggies. It combines a luma-adaptive threshold with CMAA-style local contrast suppression and an adjacent-extreme LCA term.
 
 | Scene | Stock | Low-contrast | Original 2013 |
 | --- | ---: | ---: | ---: |
