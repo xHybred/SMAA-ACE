@@ -4,7 +4,7 @@
 
 # SMAA HLSL
 
-**SMAA 1x in HLSL for D3D12, Vulkan, and SM5/DXBC.** The shader keeps the original MIT SMAA math and lookup textures and replaces the fullscreen edge and blend-weight passes with a compacted compute pipeline.
+**SMAA-ACE is for D3D12, Vulkan, & SM5/DXBC.** The shader keeps the original MIT SMAA math and lookup textures and replaces the fullscreen edge and blend-weight passes with a compacted compute pipeline.
 
 `D3D12` · `Vulkan` · `D3D11/SM5` · `HLSL` · `SMAA 1x` · `MIT`
 
