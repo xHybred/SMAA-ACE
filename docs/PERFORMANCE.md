@@ -2,30 +2,21 @@
 
 ## Benchmark method
 
-- **Scene:** the demo's primary workload is a procedural raymarched 3D corridor. A 2D high-frequency stress pattern provides a separate, deliberately pessimistic worst-case reference.
+- **Scene:** the main workload is a procedural raymarched 3D corridor. A 2D high-frequency pattern provides a separate worst case.
 - **Deterministic time:** scene animation is frame-based (`frame / 60`), not wall-clock based, so a given frame number always renders the same image. This makes screenshots and benchmark runs reproducible.
 - **GPU timestamps:** D3D12 timestamp queries bracket the SMAA work. Timestamp 0 is recorded after the scene has been drawn, so scene rendering is excluded. Timestamps 1, 2, and 3 bracket edge detection, blend weights, and resolve. The reported total spans timestamp 0 to 3.
 - **Sampling:** 300 frames per run, 3 repeats per configuration. Tables report the median of the three run medians and the range across repeats.
-- **Resolution:** 1920x1080, 2560x1440, and 3840x2160 at true output resolution, with no render scaling or upscaling.
+- **Resolution:** 1920x1080, 2560x1440, and 3840x2160 at native output resolution.
 - **GPU:** NVIDIA RTX 4070 SUPER.
-- **Post-processing:** ReShade and other external post-processing must be disabled for benchmarks. No ReShade proxy DLL, injection registry entry, `reshade-shaders` directory, or loaded ReShade module is present for these runs; the only `dxgi`/`d3d12` modules loaded by the demo are the Microsoft system DLLs. See [Benchmark prerequisites](#benchmark-prerequisites).
-- **Screenshots:** the in-app `--screenshot` capture is recorded from the render target into a readback buffer and written **before** `Present`, so it contains exactly the SMAA output and no desktop compositor or overlay contribution.
+- **Post-processing:** external overlays and injectors were disabled.
+- **Screenshots:** the in-app `--screenshot` capture is read back from the render target before `Present`.
 - **Debug layer:** the D3D12 debug layer is enabled by default. `--no-debug-layer` disables it for benchmarking. GPU timestamp results are reported both ways; the debug layer does not materially change GPU pass cost but does add host-side validation overhead.
 - **Settings:** each mode runs with the same scene and SMAA parameters: threshold 0.10, 32 search steps, 16 diagonal steps, and 25% corner rounding. Default edge mode is 0 (max-channel). The low-contrast edge mode is off unless a table says otherwise.
 - **Compile-time specialization:** the demo compiles one edge shader per edge mode and one resolve shader per debug view, defining `SMAA_EDGE_MODE` and `SMAA_DEBUG_MODE`. When `--low-contrast-edge` is present it also compiles the separate low-contrast edge entry point; otherwise that shader is never compiled and the stock entry point does not contain its code. This folds the `Options.x` and `Options.y` branches for the standard demo path. There is no runtime toggle between specialized and generic shaders. Standalone users that leave the macros undefined retain the runtime `Options` behavior.
 
-## Benchmark prerequisites
-
-ReShade or any other injector/overlay changes the presented image and can invalidate both quality captures and timing. Before benchmarking:
-
-- Remove or rename local `dxgi.dll`, `d3d12.dll`, `d3d11.dll`, `opengl32.dll`, `ReShade64.dll`, `ReShade32.dll`, or `reshade-shaders` proxies next to `Demo.exe`.
-- Disable system-wide/global injection.
-- Confirm the running process loads only the Microsoft `dxgi.dll`/`d3d12.dll` from `C:\Windows\System32`.
-- No ReShade installation or global injection was detected for the results in this document.
-
 ## 3D corridor scene results
 
-These are the primary demo results. Median of 300-frame runs, 3 repeats; brackets show the range across repeats. "Debug on" is the default D3D12 debug layer; "debug off" uses `--no-debug-layer`.
+Median of 300-frame runs, 3 repeats; brackets show the range across repeats. "Debug on" is the default D3D12 debug layer; "debug off" uses `--no-debug-layer`.
 
 | Resolution | Optimized (debug on) | Optimized (debug off) | Original 2013 (debug on) | Original 2013 (debug off) |
 | --- | ---: | ---: | ---: | ---: |
@@ -75,7 +66,7 @@ At 4K 3D the low-contrast edge pass is 0.129 ms versus 0.058 ms for stock. The e
 
 ## 2D high-frequency stress test
 
-The 2D high-frequency pattern is a separate worst-case benchmark, not the primary demo scene. Its numbers are shown here for comparison and should not be mixed with the 3D results. Debug layer off, medians of 300-frame runs, 3 repeats.
+The 2D high-frequency pattern is a separate worst case; its numbers are not comparable to the 3D results. Debug layer off, medians of 300-frame runs, 3 repeats.
 
 | Resolution | Optimized compute | Original 2013 |
 | --- | ---: | ---: |
@@ -148,7 +139,7 @@ A clean re-test reproduced the deterministic 4K captures exactly: mode 0 and mod
 
 - **GPU clock variance:** consumer GPUs vary core and memory clocks between runs. Treat small differences as run-to-run variance, not a distribution guarantee. The original 2013 blend pass at 4K is the most sensitive: its median switches between roughly 0.223 ms and 0.276 ms depending on clock state.
 - **4K range:** the 0.545 ms result applies only to the *2D stress test* optimized total in this baseline; the 4K original 2013 3D total ranged from 0.352 to 0.409 ms across debug states.
-- **Scene dependence:** edge density and screen coverage drive the blend pass. The sparse-edge 3D corridor finds much less edge work than the 2D stress pattern, so edge-dense content can produce substantially higher absolute numbers.
+- **Scene dependence:** edge density and screen coverage drive the blend pass. The sparse-edge 3D corridor finds much less edge work than the 2D stress pattern, so edge-dense content produces higher absolute numbers.
 - **Debug layer:** validation is enabled by default and adds CPU overhead. `--no-debug-layer` disables it; the clean GPU timings above use that flag. The debug-layer-on and -off GPU totals are within run-to-run variance.
 - **Scope:** these numbers cover SMAA only. Scene rendering, presentation, and any host-side work are excluded by the timestamp range.
 - **Vulkan and SM5:** no Vulkan or D3D11 runtime benchmark was run. Both shader paths compile, but the measurements here are D3D12/SM6 only. The API notes in [INTEGRATION.md](INTEGRATION.md) are integration guidance, not validated performance data.

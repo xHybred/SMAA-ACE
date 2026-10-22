@@ -14,10 +14,9 @@
     shader. The compute pipeline (edge mask, active-pixel compaction, blend
     dispatch) is an independent implementation written for this project.
 
-    This file is a self-contained shader library. It contains no ReShade
-    syntax and no host/API code. The application owns all resources,
-    descriptor sets/root signatures, barriers, clears, stencil state and
-    presentation.
+    This file is a self-contained shader library with no host/API code.
+    The application owns all resources, descriptor sets/root signatures,
+    barriers, clears, stencil state and presentation.
 
     -------------------------------------------------------------------------
     PIPELINE OVERVIEW

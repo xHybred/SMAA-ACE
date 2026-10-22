@@ -1,38 +1,35 @@
 <p align="center">
-  <img src="docs/hero.svg" alt="SMAA 1x compute-optimized HLSL for D3D12, Vulkan, and SM5/DXBC targets" width="100%">
+  <img src="docs/hero.svg" alt="SMAA 1x HLSL for D3D12, Vulkan, and SM5/DXBC" width="100%">
 </p>
 
 # SMAA HLSL
 
-**Compute-shader SMAA 1x for D3D12, Vulkan, and SM5/DXBC targets.** A standalone HLSL implementation with the original MIT SMAA math and lookup textures and a compacted edge-pixel pipeline. The bundled D3D12 demo is a validation and benchmarking harness, not the product.
+**SMAA 1x in HLSL for D3D12, Vulkan, and SM5/DXBC.** The shader keeps the original MIT SMAA math and lookup textures and replaces the fullscreen edge and blend-weight passes with a compacted compute pipeline.
 
 `D3D12` · `Vulkan` · `D3D11/SM5` · `HLSL` · `SMAA 1x` · `MIT`
 
 ## Shader targets
 
-The shader is the primary artifact. It is API-agnostic HLSL with two binding models and two compaction paths:
-
 | Target | Status |
 | --- | --- |
-| D3D12 + SM6 | Default path. Demo and benchmarks validated on Windows. |
-| Vulkan + SM6 | Compiles to SPIR-V with DXC. No Vulkan host or runtime validation is included. |
-| Vulkan + SM5 | Compiles to SPIR-V with DXC and `SMAA_USE_SM6=0`. No runtime validation. |
-| D3D11-class SM5/DXBC | Compiles with FXC to `vs_5_0`, `cs_5_0`, and `ps_5_0`. No DX11 host or demo is included. |
-| Other HLSL targets | Not validated. Porting is up to the host. |
+| D3D12 + SM6 | Default. Demo and benchmarks use this path. |
+| Vulkan + SM6 | Compiles to SPIR-V. No Vulkan host is included. |
+| Vulkan + SM5 | Compiles to SPIR-V with `SMAA_USE_SM6=0`. No runtime validation. |
+| D3D11-class SM5/DXBC | Compiles with FXC. No DX11 host is included. |
 
-DXC compiles Shader Model 6 and SPIR-V, not SM5 profiles. Use FXC for the DXBC paths. On some D3D11-class devices, `R8G8_UNORM` typed UAV support is unavailable; use an RGBA8 edge texture and adjust the declared format. See [docs/INTEGRATION.md](docs/INTEGRATION.md).
+DXC handles SM6 and SPIR-V; use FXC for SM5/DXBC. On devices without `R8G8_UNORM` typed UAV support, use an RGBA8 edge texture. See [docs/INTEGRATION.md](docs/INTEGRATION.md).
 
-## Why this port exists
+## Overview
 
-SMAA does most of its work only at detected edges, but the reference implementation still launches fullscreen edge and blend-weight passes. This port keeps the reference math and moves the edge and blend-weight stages to compute, records which pixels actually contain edges, and runs the expensive search and weight calculation only for those pixels.
+The reference SMAA 1x pipeline runs edge detection and blend-weight calculation as fullscreen pixel passes, even though most pixels contain no edge. This implementation runs both stages in compute. Edge detection packs a 2-bit mask per 32x16 tile; edge pixels are compacted into a shared-memory queue so only those pixels execute the search, LUT sampling, and weight write.
 
-The result is the same SMAA 1x quality envelope with substantially less work on edge-sparse content:
+On the demo corridor:
 
-- **0.169 ms vs 0.352 ms** at 3840x2160 on the demo corridor, a **52% reduction**.
+- **0.169 ms vs 0.352 ms** at 3840x2160, a **52% reduction**.
 - **0.051 ms vs 0.222 ms** for blend weights at 4K, a **4.35x** speedup.
 - **Maximum 1/255 difference** from the original path on the 3D scene, with flat regions unchanged.
 
-The edge pass itself is not faster. The gain comes from compaction and from avoiding the reference blend pass's fullscreen search work.
+Edge detection is roughly neutral. The savings come from skipping blend-weight work.
 
 <p align="center">
   <img src="docs/screenshot.png" alt="SMAA compute demo: procedural raymarched corridor at 720p" width="900">
@@ -47,23 +44,23 @@ The edge pass itself is not faster. The gain comes from compaction and from avoi
 | Optimization | What it does |
 | --- | --- |
 | **Compute edge and blend stages** | Replaces the reference fullscreen edge and blend-weight pixel passes with two compute dispatches, enabling thread-group cooperation and shared-memory queues. |
-| **32x8 groups, two pixels per thread** | Covers a 32x16 pixel tile per group. The two pixels are processed independently; there is no tap sharing between them. This defines the tile shape, not an edge-pass speedup. |
+| **32x8 groups, two pixels per thread** | Covers a 32x16 pixel tile per group. |
 | **2-bit tile mask** | Packs two edge bits per pixel into 32 `R32I` words per tile, about 0.25 bytes per pixel instead of a full-resolution RG8 edge mask. The mask is built in groupshared memory and written once per tile. |
 | **On-chip mask clear** | The first 32 threads clear the groupshared mask words. No full-resolution mask texture is allocated or cleared. |
 | **Active-pixel compaction** | Edge pixels are compacted into a 512-slot groupshared queue. Only queued pixels run the blend-weight search, LUT sampling, and weight write. |
 | **SM6 wave compaction** | `WaveActiveCountBits`, one atomic per wave per batch, and `WavePrefixCountBits` produce the active list with minimal atomic traffic. |
-| **SM5 fallback** | A per-active-pixel groupshared-atomic path is available with `SMAA_USE_SM6=0`, so the shader is not limited to Shader Model 6 wave intrinsics. Compile it with FXC for D3D11-class targets; this is a shader-model path, not an included DX11 backend. |
+| **SM5 fallback** | A per-active-pixel groupshared-atomic path for SM5/DXBC builds (`SMAA_USE_SM6=0`). Compile it with FXC for D3D11-class targets. |
 | **Edge-only writes** | The edge compute shader writes `EdgesTex` only when an edge is present; it does not store zeros for inactive pixels. The host must still clear `EdgesTex` and `BlendTex` each frame because blend searches read neighboring texels. |
 | **Mask supplies the blend edge pair** | The blend pass reads the 2-bit edge code from the tile mask instead of fetching `EdgesTex` per pixel. |
 | **Direct integer loads** | Edge detection and the first diagonal search use exact integer `Load` operations instead of filtered samples. The second diagonal search intentionally remains bilinear because its quarter-pixel offset encodes crossing-edge information. |
 | **Early exit after left/top** | Edge detection returns immediately when neither the left nor top delta exceeds the threshold, matching the reference discard without issuing the remaining color loads. |
 | **Resolve integer loads** | Resolve fetches the three relevant blend weights with `Load` instead of filtered samples and uses the same two-tap neighborhood blend as the reference. |
 | **Compile-time PSO specialization** | `SMAA_EDGE_MODE` and `SMAA_DEBUG_MODE` fold the runtime `Options.x`/`Options.y` branches. The demo compiles two edge and three resolve variants and selects the matching PSO. Most of the measured gain is in resolve. |
-| **Separate low-contrast entry** | The optional low-contrast detector is a separate compute entry point. The demo only compiles it when enabled, and DXC removes it entirely from the stock PSO. This is a startup and module-size benefit, not a stock frame-time optimization. |
+| **Separate low-contrast entry** | The optional low-contrast detector is a separate compute entry point. The demo only compiles it when enabled. |
 
 ### Where the time goes
 
-At 4K on the 3D corridor, the edge pass is essentially neutral. Compaction is the dominant win:
+4K, 3D corridor:
 
 | Pass | Optimized | Original 2013 | Difference |
 | --- | ---: | ---: | ---: |
@@ -76,7 +73,7 @@ The gain is content-dependent. The 2D high-frequency stress pattern has far more
 
 ## Benchmarks
 
-Measured on an NVIDIA RTX 4070 SUPER with GPU timestamp queries. Values are medians of 300-frame runs, three repeats, at the true output resolution, with the D3D12 debug layer disabled. The scene is drawn before timestamp 0, so the reported numbers cover the SMAA passes only. ReShade and other external post-processing were disabled. See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for the method, debug-layer results, and caveats.
+Measured on an NVIDIA RTX 4070 SUPER with GPU timestamp queries. Values are medians of 300-frame runs, three repeats, at the native output resolution, with the D3D12 debug layer disabled. The scene is drawn before timestamp 0, so the numbers cover the SMAA passes only. See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for the method and caveats.
 
 ### 3D corridor
 
@@ -88,7 +85,7 @@ Measured on an NVIDIA RTX 4070 SUPER with GPU timestamp queries. Values are medi
 
 ### 2D high-frequency stress test
 
-This is a deliberately pessimistic, separate worst case and should not be compared directly with the corridor numbers.
+Synthetic high-frequency pattern, included as a worst case. Its numbers are not comparable to the corridor.
 
 | Resolution | Optimized | Original 2013 | Reduction |
 | --- | ---: | ---: | ---: |
@@ -107,7 +104,7 @@ Deterministic 4K comparison, optimized mode 0 versus original 2013 mode 1:
 | 3D corridor | 1/255 | 0.00000015 | 0.0000% | 0.0000% | 0.0087% |
 | 2D stress | 2/255 | 0.00001701 | 0.0017% | 0.0000% | 0.7453% |
 
-Flat regions are exact on the 3D scene. This is color-only SMAA 1x: there is no temporal accumulation, depth-based predication, reprojection, or machine-learning component.
+Flat regions are exact on the 3D scene.
 
 ### Low-contrast edge mode (opt-in)
 
@@ -126,7 +123,7 @@ Against 4x SSAA at 4K 3D, it lowers MAE from 0.00033556 to 0.00032792 and pixels
 
 ## Install and build
 
-No prebuilt binaries or NuGet package are distributed. Most users should copy `SMAA.hlsl` and the LUTs into an existing renderer. Build the demo only if you want to run the reference comparison and timing harness.
+No prebuilt binaries or NuGet package are distributed. Copy `SMAA.hlsl` and the LUTs into your renderer, or build the demo to run the reference comparison and timing tests.
 
 ### Demo requirements
 
@@ -135,7 +132,7 @@ No prebuilt binaries or NuGet package are distributed. Most users should copy `S
 - The .NET 8 SDK
 - The DXC shader compiler is used at runtime through Vortice.Dxc; no separate shader build step is required for the demo
 
-NuGet restores Vortice.Direct3D12, Vortice.DXGI, and Vortice.Dxc automatically. None of these requirements apply to the standalone shader.
+NuGet restores Vortice.Direct3D12, Vortice.DXGI, and Vortice.Dxc automatically.
 
 From the repository root:
 
@@ -163,7 +160,7 @@ Example: run 1440p for 300 frames with the debug layer disabled.
 
 ### Use in your renderer
 
-This repository ships a shader, not an engine integration layer. Your renderer owns resources, descriptors, barriers, clears, and presentation. The full contract is in [docs/INTEGRATION.md](docs/INTEGRATION.md).
+The renderer owns resource creation, descriptors, barriers, clears, and presentation. The full resource contract is in [docs/INTEGRATION.md](docs/INTEGRATION.md).
 
 The default build emits D3D12 register bindings. Define `SMAA_VULKAN=1` for Vulkan descriptor-set bindings, or compile with FXC plus `SMAA_USE_SM6=0` for the D3D11-class SM5 path.
 
@@ -185,7 +182,7 @@ dxc -T cs_6_0 -E SMAABlendWeightsCS -DSMAA_USE_SM6=1 SMAA.hlsl -Fo SMAABlendWeig
 dxc -T ps_6_0 -E SMAAResolvePS SMAA.hlsl -Fo SMAAResolvePS.cso
 ```
 
-DXC does not compile Shader Model 5 profiles. For the SM5/DXBC path, use FXC and define `SMAA_USE_SM6=0` for every entry point, including the vertex shader, because the shader rejects SM6 intrinsics below shader model 6:
+DXC does not compile Shader Model 5 profiles. For SM5/DXBC, use FXC with `SMAA_USE_SM6=0` for every entry point:
 
 ```bat
 fxc /nologo /T vs_5_0 /E SMAAFullscreenVS /DSMAA_USE_SM6=0 /Fo SMAAFullscreenVS.cso SMAA.hlsl
@@ -245,7 +242,7 @@ dotnet run --project Demo/Demo.csproj -c Release -- --width 3840 --height 2160 -
 
 ```text
 .
-├── SMAA.hlsl                 Optimized standalone SMAA library
+├── SMAA.hlsl                 Optimized SMAA shader library
 ├── LICENSE                   MIT license for this project
 ├── LICENSE-SMAA.txt          MIT notice for the original SMAA authors
 ├── README.md
@@ -284,14 +281,7 @@ dotnet run --project Demo/Demo.csproj -c Release -- --width 3840 --height 2160 -
 - **R8G8 UAV support is not universal.** Some older devices do not support RG8 storage images; use an RGBA8 edge texture and adjust the image format as noted in [docs/INTEGRATION.md](docs/INTEGRATION.md).
 - **The SM5/DXBC path has no bundled host.** All stock and low-contrast entry points compile with FXC to shader model 5, but this repository includes no D3D11 renderer, resource setup, or runtime validation for that path.
 - **Vulkan compiles, but is not runtime-validated here.** The shader emits Vulkan bindings with `SMAA_VULKAN=1` and compiles to SPIR-V with both compaction paths. The bundled demo is D3D12-only, so Vulkan descriptors, barriers, and presentation are left to the host.
-- **Low-contrast mode is tuned on procedural scenes.** It is opt-in for a reason. Validate it on your own content before shipping it.
-- **This is not a drop-in engine plugin.** You must provide resource creation, descriptors, dispatch, barriers, clears, and presentation.
-
-## Experiment status
-
-The shipping modes are optimized compute SMAA (0), original 2013 SMAA (1), and SMAA off (2). The optimized path uses color-only edge detection with the maximum-channel metric by default. The optional low-contrast mode is an additional edge detector for mode 0 and remains off unless explicitly enabled.
-
-Two other experiments were evaluated and removed because they did not meet the quality and performance gates: a hybrid edge-seeding pass that added CMAA2-inspired seeds to the SMAA edge mask, and a separate residual-coverage pass layered on top of the unchanged SMAA mask and blend texture. Neither is present in the shader or the demo.
+- **Low-contrast mode is tuned on procedural scenes.** Validate it on your own content before shipping it.
 
 ## References
 
