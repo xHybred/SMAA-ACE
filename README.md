@@ -2,7 +2,7 @@
   <img src="docs/hero.svg" alt="SMAA 1x HLSL for D3D12, Vulkan, and SM5/DXBC" width="100%">
 </p>
 
-# SMAA HLSL
+# SMAA-ACE
 
 **SMAA-ACE is for D3D12, Vulkan, & SM5/DXBC.** The shader keeps the original MIT SMAA math and lookup textures and replaces the fullscreen edge and blend-weight passes with a compacted compute pipeline.
 
