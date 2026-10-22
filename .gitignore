@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+.vscode/
+publish/
+*.user
+*.suo
+
+# Local captures and logs
+*.bmp
+*.log

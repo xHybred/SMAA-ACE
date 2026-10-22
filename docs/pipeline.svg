@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="330" viewBox="0 0 1200 330" role="img" aria-labelledby="pipeTitle pipeDesc">
+  <title id="pipeTitle">SMAA compute pipeline</title>
+  <desc id="pipeDesc">Five stages: edge detection compute, 2-bit tile mask, active-pixel compaction, blend weights compute, and resolve pixel shader.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#0e1828"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#63e6be"/>
+      <stop offset="1" stop-color="#4dabf7"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#4f6580"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="330" fill="url(#bg)"/>
+
+  <g font-family="Segoe UI, Inter, Arial, sans-serif">
+    <text x="50" y="44" fill="#e7eef7" font-size="24" font-weight="700">Inside the optimized path</text>
+    <text x="50" y="68" fill="#71859f" font-size="14">Two compute dispatches replace the reference edge and blend-weight fullscreen passes.</text>
+
+    <g>
+      <rect x="50" y="92" width="190" height="148" rx="12" fill="#101d2e" stroke="#2a3e58"/>
+      <rect x="50" y="92" width="190" height="4" rx="2" fill="url(#bar)"/>
+      <text x="70" y="124" fill="#63e6be" font-size="14" font-weight="700" letter-spacing="1.2">EDGE DETECT</text>
+      <text x="70" y="150" fill="#c9d6e5" font-size="13">Compute 32x8</text>
+      <text x="70" y="169" fill="#8ea2ba" font-size="13">2 px per thread</text>
+      <text x="70" y="188" fill="#8ea2ba" font-size="13">32x16 pixel tile</text>
+      <text x="70" y="207" fill="#8ea2ba" font-size="13">edge-only writes</text>
+    </g>
+
+    <line x1="246" y1="166" x2="272" y2="166" stroke="#4f6580" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <g>
+      <rect x="280" y="92" width="190" height="148" rx="12" fill="#101d2e" stroke="#2a3e58"/>
+      <rect x="280" y="92" width="190" height="4" rx="2" fill="url(#bar)"/>
+      <text x="300" y="124" fill="#63e6be" font-size="14" font-weight="700" letter-spacing="1.2">TILE MASK</text>
+      <text x="300" y="150" fill="#c9d6e5" font-size="13">2 bits per pixel</text>
+      <text x="300" y="169" fill="#8ea2ba" font-size="13">32 R32I words</text>
+      <text x="300" y="188" fill="#8ea2ba" font-size="13">cleared on-chip</text>
+      <text x="300" y="207" fill="#8ea2ba" font-size="13">no mask texture clear</text>
+    </g>
+
+    <line x1="476" y1="166" x2="502" y2="166" stroke="#4f6580" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <g>
+      <rect x="510" y="92" width="190" height="148" rx="12" fill="#101d2e" stroke="#2a3e58"/>
+      <rect x="510" y="92" width="190" height="4" rx="2" fill="url(#bar)"/>
+      <text x="530" y="124" fill="#63e6be" font-size="14" font-weight="700" letter-spacing="1.2">COMPACT</text>
+      <text x="530" y="150" fill="#c9d6e5" font-size="13">SM6 wave queue</text>
+      <text x="530" y="169" fill="#8ea2ba" font-size="13">SM5 atomic fallback</text>
+      <text x="530" y="188" fill="#8ea2ba" font-size="13">active pixels only</text>
+      <text x="530" y="207" fill="#8ea2ba" font-size="13">512-slot group queue</text>
+    </g>
+
+    <line x1="706" y1="166" x2="732" y2="166" stroke="#4f6580" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <g>
+      <rect x="740" y="92" width="190" height="148" rx="12" fill="#101d2e" stroke="#2a3e58"/>
+      <rect x="740" y="92" width="190" height="4" rx="2" fill="url(#bar)"/>
+      <text x="760" y="124" fill="#63e6be" font-size="14" font-weight="700" letter-spacing="1.2">BLEND WEIGHTS</text>
+      <text x="760" y="150" fill="#c9d6e5" font-size="13">Compute dispatch</text>
+      <text x="760" y="169" fill="#8ea2ba" font-size="13">mask supplies edge pair</text>
+      <text x="760" y="188" fill="#8ea2ba" font-size="13">area and search LUTs</text>
+      <text x="760" y="207" fill="#8ea2ba" font-size="13">RGBA8 output</text>
+    </g>
+
+    <line x1="936" y1="166" x2="962" y2="166" stroke="#4f6580" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <g>
+      <rect x="970" y="92" width="180" height="148" rx="12" fill="#101d2e" stroke="#2a3e58"/>
+      <rect x="970" y="92" width="180" height="4" rx="2" fill="url(#bar)"/>
+      <text x="990" y="124" fill="#63e6be" font-size="14" font-weight="700" letter-spacing="1.2">RESOLVE</text>
+      <text x="990" y="150" fill="#c9d6e5" font-size="13">Pixel shader</text>
+      <text x="990" y="169" fill="#8ea2ba" font-size="13">3 weight loads</text>
+      <text x="990" y="188" fill="#8ea2ba" font-size="13">two-tap blend</text>
+      <text x="990" y="207" fill="#8ea2ba" font-size="13">always writes</text>
+    </g>
+  </g>
+
+  <g font-family="Segoe UI, Inter, Arial, sans-serif">
+    <line x1="50" y1="270" x2="1150" y2="270" stroke="#243650" stroke-width="1"/>
+    <text x="50" y="296" fill="#8ea2ba" font-size="13">EdgesTex and BlendTex must be cleared each frame. The tile mask does not require a clear.</text>
+    <text x="50" y="315" fill="#5f748d" font-size="12">Measured 4K corridor: 0.169 ms optimized versus 0.352 ms original 2013 path on an RTX 4070 SUPER.</text>
+  </g>
+</svg>

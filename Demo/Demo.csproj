@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x64</PlatformTarget>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="DemoShaders.hlsl" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="DemoScene.hlsl" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\SMAA.hlsl" Link="SMAA.hlsl" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Reference\SMAA.hlsl" Link="Reference\SMAA.hlsl" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Reference\SMAAReference.hlsl" Link="Reference\SMAAReference.hlsl" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Reference\AreaTex.rg8" Link="Reference\AreaTex.rg8" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Reference\SearchTex.r8" Link="Reference\SearchTex.r8" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Vortice.Direct3D12" Version="3.8.3" />
+    <PackageReference Include="Vortice.DXGI" Version="3.8.3" />
+    <PackageReference Include="Vortice.Dxc" Version="3.8.3" />
+  </ItemGroup>
+</Project>
