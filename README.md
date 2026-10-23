@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="docs/hero.svg" alt="SMAA 1x HLSL for D3D12, Vulkan, and SM5/DXBC" width="100%">
+  <img src="docs/hero.svg" alt="SMAA-ACE: SMAA 1x with Active Compaction of Edges for D3D12, Vulkan, and SM5/DXBC" width="100%">
 </p>
 
-# SMAA HLSL
+# SMAA-ACE
 
-**SMAA 1x in HLSL for D3D12, Vulkan, and SM5/DXBC.** The shader keeps the original MIT SMAA math and lookup textures and replaces the fullscreen edge and blend-weight passes with a compacted compute pipeline.
+**SMAA 1x in HLSL for D3D12, Vulkan, and SM5/DXBC.** ACE stands for Active Compaction of Edges: the shader keeps the original MIT SMAA math and lookup textures and replaces the fullscreen edge and blend-weight passes with a compacted compute pipeline.
 
 `D3D12` · `Vulkan` · `D3D11/SM5` · `HLSL` · `SMAA 1x` · `MIT`
 
