@@ -128,7 +128,6 @@ No prebuilt binaries or NuGet package are distributed. Copy `SMAA.hlsl` and the 
 ### Demo requirements
 
 - Windows 10 or 11
-- A D3D12-capable GPU and driver
 - The .NET 8 SDK
 - The DXC shader compiler is used at runtime through Vortice.Dxc; no separate shader build step is required for the demo
 
