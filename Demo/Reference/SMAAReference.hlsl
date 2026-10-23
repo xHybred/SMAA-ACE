@@ -1,5 +1,5 @@
 // Wrapper that exposes the original 2013 iryoku SMAA as plain D3D12 shader
-// entry points. The only change to SMAA.hlsl itself is explicit sampler
+// entry points. The only change to SMAA2013.hlsl itself is explicit sampler
 // registers on LinearSampler (s0) and PointSampler (s1).
 
 #define SMAA_HLSL_4
@@ -15,7 +15,7 @@ cbuffer ReferenceParams : register(b0)
     float4 SMAA_RT_METRICS;
 };
 
-#include "SMAA.hlsl"
+#include "SMAA2013.hlsl"
 
 Texture2D<float4> colorTex : register(t0);
 Texture2D<float4> edgesTex : register(t1);

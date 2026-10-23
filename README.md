@@ -123,7 +123,7 @@ Against 4x SSAA at 4K 3D, it lowers MAE from 0.00033556 to 0.00032792 and pixels
 
 ## Install and build
 
-No prebuilt binaries or NuGet package are distributed. Copy `SMAA.hlsl` and the LUTs into your renderer, or build the demo to run the reference comparison and timing tests.
+No prebuilt binaries or NuGet package are distributed. Copy the `SMAA/` folder into your renderer, or build the demo to run the reference comparison and timing tests.
 
 ### Demo requirements
 
@@ -141,7 +141,7 @@ dotnet build Demo/Demo.csproj -c Release
 dotnet run --project Demo/Demo.csproj -c Release -- --width 1280 --height 720 --mode 0
 ```
 
-The project copies `SMAA.hlsl`, the reference shaders, and the LUTs into the output directory, so the demo can be launched from any working directory.
+The project copies the `SMAA/` folder, the reference shaders, and the demo shaders into the output directory, so the demo can be launched from any working directory.
 
 ### Quick launch scripts
 
@@ -166,14 +166,14 @@ The default build emits D3D12 register bindings. Define `SMAA_VULKAN=1` for Vulk
 
 Minimal integration checklist:
 
-1. Copy `SMAA.hlsl` and the area/search LUTs into your shader pipeline.
+1. Copy the `SMAA/` folder into your shader pipeline.
 2. Create a color input view, `EdgesTex` (RG8), `BlendTex` (RGBA8), and `EdgeMask` (`R32_SINT`). The area LUT is RG8 160x560; the search LUT is R8 64x16; neither is sRGB.
 3. Compile `SMAAFullscreenVS`, `SMAAEdgeDetectionCS`, `SMAABlendWeightsCS`, and `SMAAResolvePS`. Compile `SMAAEdgeDetectionLowContrastCS` only if you enable the optional mode.
 4. Dispatch edges with `ceil(width / 32)` by `ceil(height / 16)` groups, dispatch blend over the same tile grid, then draw the resolve fullscreen triangle.
 5. Clear `EdgesTex` and `BlendTex` every frame. `EdgeMask` does not require a clear.
 6. Insert UAV and resource barriers between edge, blend, and resolve, following the sample.
 
-Example shader compilation with DXC:
+Example shader compilation with DXC (run from inside `SMAA/`):
 
 ```powershell
 dxc -T vs_6_0 -E SMAAFullscreenVS SMAA.hlsl -Fo SMAAFullscreenVS.cso
@@ -242,9 +242,12 @@ dotnet run --project Demo/Demo.csproj -c Release -- --width 3840 --height 2160 -
 
 ```text
 .
-├── SMAA.hlsl                 Optimized SMAA shader library
+├── SMAA/                     Drop-in shader folder
+│   ├── SMAA.hlsl             Optimized SMAA shader library
+│   ├── AreaTex.rg8           SMAA area LUT, 160x560 RG8
+│   ├── SearchTex.r8          SMAA search LUT, 64x16 R8
+│   └── LICENSE-SMAA.txt      MIT notice for the original SMAA authors
 ├── LICENSE                   MIT license for this project
-├── LICENSE-SMAA.txt          MIT notice for the original SMAA authors
 ├── README.md
 ├── .gitignore
 ├── Demo/
@@ -255,12 +258,10 @@ dotnet run --project Demo/Demo.csproj -c Release -- --width 3840 --height 2160 -
 │   ├── run-720p.bat          Launch at 1280x720
 │   ├── run-1080p.bat         Launch at 1920x1080
 │   ├── run-1440p.bat         Launch at 2560x1440
-│   └── run-2160p.bat         Launch at 3840x2160
-├── Reference/
-│   ├── AreaTex.rg8           SMAA area LUT, 160x560 RG8
-│   ├── SearchTex.r8          SMAA search LUT, 64x16 R8
-│   ├── SMAA.hlsl             Original 2013 SMAA (MIT)
-│   └── SMAAReference.hlsl    D3D12 entry-point wrapper for the original
+│   ├── run-2160p.bat         Launch at 3840x2160
+│   └── Reference/            Original 2013 SMAA, demo comparison only
+│       ├── SMAA2013.hlsl     Original 2013 SMAA (MIT)
+│       └── SMAAReference.hlsl D3D12 entry-point wrapper for the original
 └── docs/
     ├── INTEGRATION.md        Resource contract and API integration notes
     ├── PERFORMANCE.md        Benchmark method, numbers, and caveats
@@ -273,7 +274,7 @@ dotnet run --project Demo/Demo.csproj -c Release -- --width 3840 --height 2160 -
 
 - **SMAA 1x only.** There is no temporal SMAA, reprojection, depth/stencil predication, or MSAA resolve path.
 - **Color-only edge detection.** The shader does not use depth, normals, or motion vectors.
-- **Two LUTs are required.** The area and search textures are part of the original MIT SMAA distribution and are included in `Reference/`.
+- **Two LUTs are required.** The area and search textures are part of the original MIT SMAA distribution and are included in `SMAA/`.
 - **Not bit-identical to the 2013 reference.** Compute evaluation order changes the last bit on a small number of pixels. The measured maximum is 1/255 on 3D and 2/255 on 2D; flat regions are exact.
 - **Performance is content-dependent.** Sparse-edge scenes benefit most. Dense, high-frequency content sees a smaller gain.
 - **R8G8 UAV support is not universal.** Some older devices do not support RG8 storage images; use an RGBA8 edge texture and adjust the image format as noted in [docs/INTEGRATION.md](docs/INTEGRATION.md).
@@ -291,6 +292,6 @@ dotnet run --project Demo/Demo.csproj -c Release -- --width 3840 --height 2160 -
 
 This project is released under the MIT License; see [LICENSE](LICENSE).
 
-The SMAA algorithm, original shader code, area texture, and search texture are MIT-licensed by Jorge Jimenez, Jose I. Echevarria, Tiago Sousa, and Diego Gutierrez. The original notice is in [LICENSE-SMAA.txt](LICENSE-SMAA.txt).
+The SMAA algorithm, original shader code, area texture, and search texture are MIT-licensed by Jorge Jimenez, Jose I. Echevarria, Tiago Sousa, and Diego Gutierrez. The original notice is in [SMAA/LICENSE-SMAA.txt](SMAA/LICENSE-SMAA.txt).
 
 This project is an independent implementation and is not affiliated with or endorsed by the original SMAA authors.

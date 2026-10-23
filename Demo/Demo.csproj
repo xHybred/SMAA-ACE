@@ -10,11 +10,11 @@
   <ItemGroup>
     <None Include="DemoShaders.hlsl" CopyToOutputDirectory="PreserveNewest" />
     <None Include="DemoScene.hlsl" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\SMAA.hlsl" Link="SMAA.hlsl" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\Reference\SMAA.hlsl" Link="Reference\SMAA.hlsl" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\Reference\SMAAReference.hlsl" Link="Reference\SMAAReference.hlsl" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\Reference\AreaTex.rg8" Link="Reference\AreaTex.rg8" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\Reference\SearchTex.r8" Link="Reference\SearchTex.r8" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\SMAA\SMAA.hlsl" Link="SMAA\SMAA.hlsl" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\SMAA\AreaTex.rg8" Link="SMAA\AreaTex.rg8" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\SMAA\SearchTex.r8" Link="SMAA\SearchTex.r8" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Reference\SMAA2013.hlsl" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Reference\SMAAReference.hlsl" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Vortice.Direct3D12" Version="3.8.3" />

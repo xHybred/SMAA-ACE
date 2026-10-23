@@ -1,9 +1,9 @@
 # Integration guide
 
-`SMAA.hlsl` is a standalone shader library. The application owns every resource, view, root signature or descriptor set, barrier, clear, and presentation step.
+`SMAA/SMAA.hlsl` is a standalone shader library. The application owns every resource, view, root signature or descriptor set, barrier, clear, and presentation step.
 
 - Optimized path: `SMAAEdgeDetectionCS` -> `SMAABlendWeightsCS` -> `SMAAResolvePS`.
-- Comparison path: the original 2013 SMAA pixel shaders exposed by `Reference/SMAAReference.hlsl`.
+- Comparison path: the demo-only original 2013 SMAA pixel shaders exposed by `Demo/Reference/SMAAReference.hlsl`.
 - The optimized compute path uses Shader Model 6.0 wave intrinsics by default. Compile with `SMAA_USE_SM6=0` for the groupshared-atomic SM5/DXBC fallback used by D3D11-class targets.
 - D3D12 register bindings are the default. Define `SMAA_VULKAN=1` for Vulkan descriptor-set bindings and DXC SPIR-V output.
 
@@ -25,8 +25,8 @@ Create the color resource as a typeless format (for example `R8G8B8A8_TYPELESS`)
 
 The supplied LUT binaries are:
 
-- `Reference/AreaTex.rg8`: 160x560, two bytes per pixel (R = area X, G = area Y).
-- `Reference/SearchTex.r8`: 64x16, one byte per pixel.
+- `SMAA/AreaTex.rg8`: 160x560, two bytes per pixel (R = area X, G = area Y).
+- `SMAA/SearchTex.r8`: 64x16, one byte per pixel.
 
 ## D3D12 bindings
 
@@ -106,7 +106,7 @@ For the fallback, clear `EdgesTex` and `BlendTex` before use. To skip non-edge p
 | Mode | Path |
 | --- | --- |
 | 0 | Optimized compute edge, blend, and resolve (default) |
-| 1 | Original 2013 SMAA pixel shaders through `SMAAReference.hlsl` |
+| 1 | Original 2013 SMAA pixel shaders through `Demo/Reference/SMAAReference.hlsl` |
 | 2 | SMAA off; scene is copied to the back buffer |
 
 When compiled without specialization, edge detection is selected by `Options.x` at runtime:
@@ -134,7 +134,7 @@ The mode is roughly 40-55% slower than optimized stock in 3D because it reads ni
 
 ### Compile-time option specialization
 
-For fixed settings, define `SMAA_EDGE_MODE` and/or `SMAA_DEBUG_MODE` when compiling to remove the corresponding `Options` branches:
+For fixed settings, define `SMAA_EDGE_MODE` and/or `SMAA_DEBUG_MODE` when compiling to remove the corresponding `Options` branches (run from inside `SMAA/`):
 
 | Macro | Values | Effect |
 | --- | --- | --- |

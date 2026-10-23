@@ -155,7 +155,7 @@
     EdgesTex and change the UAV type/image format in this file to match.
 
     LUTs:
-        AreaTex.rg8 and SearchTex.r8 are supplied in Reference/.
+        AreaTex.rg8 and SearchTex.r8 are supplied alongside this file.
         AreaLUT uses linear filtering. SearchLUT uses point/load access, so
         its sampler state is irrelevant; do not enable sRGB on either.
 

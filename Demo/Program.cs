@@ -767,26 +767,26 @@ internal sealed class D3D12Renderer : IDisposable
         CheckDevice("resource views");
 
         string root = AppContext.BaseDirectory;
-        byte[] optEdgeCSMax = ProgramCompile(Path.Combine(root, "SMAA.hlsl"), "SMAAEdgeDetectionCS", DxcShaderStage.Compute,
+        byte[] optEdgeCSMax = ProgramCompile(Path.Combine(root, "SMAA", "SMAA.hlsl"), "SMAAEdgeDetectionCS", DxcShaderStage.Compute,
             new DxcDefine { Name = "SMAA_EDGE_MODE", Value = "0" });
-        byte[] optEdgeCSLuma = ProgramCompile(Path.Combine(root, "SMAA.hlsl"), "SMAAEdgeDetectionCS", DxcShaderStage.Compute,
+        byte[] optEdgeCSLuma = ProgramCompile(Path.Combine(root, "SMAA", "SMAA.hlsl"), "SMAAEdgeDetectionCS", DxcShaderStage.Compute,
             new DxcDefine { Name = "SMAA_EDGE_MODE", Value = "1" });
         byte[]? optEdgeCSLowContrastMax = null;
         byte[]? optEdgeCSLowContrastLuma = null;
         if (_lowContrastEdge)
         {
-            optEdgeCSLowContrastMax = ProgramCompile(Path.Combine(root, "SMAA.hlsl"), "SMAAEdgeDetectionLowContrastCS", DxcShaderStage.Compute,
+            optEdgeCSLowContrastMax = ProgramCompile(Path.Combine(root, "SMAA", "SMAA.hlsl"), "SMAAEdgeDetectionLowContrastCS", DxcShaderStage.Compute,
                 new DxcDefine { Name = "SMAA_EDGE_MODE", Value = "0" });
-            optEdgeCSLowContrastLuma = ProgramCompile(Path.Combine(root, "SMAA.hlsl"), "SMAAEdgeDetectionLowContrastCS", DxcShaderStage.Compute,
+            optEdgeCSLowContrastLuma = ProgramCompile(Path.Combine(root, "SMAA", "SMAA.hlsl"), "SMAAEdgeDetectionLowContrastCS", DxcShaderStage.Compute,
                 new DxcDefine { Name = "SMAA_EDGE_MODE", Value = "1" });
         }
-        byte[] optBlendCS = ProgramCompile(Path.Combine(root, "SMAA.hlsl"), "SMAABlendWeightsCS", DxcShaderStage.Compute);
-        byte[] optVS = ProgramCompile(Path.Combine(root, "SMAA.hlsl"), "SMAAFullscreenVS", DxcShaderStage.Vertex);
-        byte[] optResolveNormal = ProgramCompile(Path.Combine(root, "SMAA.hlsl"), "SMAAResolvePS", DxcShaderStage.Pixel,
+        byte[] optBlendCS = ProgramCompile(Path.Combine(root, "SMAA", "SMAA.hlsl"), "SMAABlendWeightsCS", DxcShaderStage.Compute);
+        byte[] optVS = ProgramCompile(Path.Combine(root, "SMAA", "SMAA.hlsl"), "SMAAFullscreenVS", DxcShaderStage.Vertex);
+        byte[] optResolveNormal = ProgramCompile(Path.Combine(root, "SMAA", "SMAA.hlsl"), "SMAAResolvePS", DxcShaderStage.Pixel,
             new DxcDefine { Name = "SMAA_DEBUG_MODE", Value = "0" });
-        byte[] optResolveEdges = ProgramCompile(Path.Combine(root, "SMAA.hlsl"), "SMAAResolvePS", DxcShaderStage.Pixel,
+        byte[] optResolveEdges = ProgramCompile(Path.Combine(root, "SMAA", "SMAA.hlsl"), "SMAAResolvePS", DxcShaderStage.Pixel,
             new DxcDefine { Name = "SMAA_DEBUG_MODE", Value = "1" });
-        byte[] optResolveBlend = ProgramCompile(Path.Combine(root, "SMAA.hlsl"), "SMAAResolvePS", DxcShaderStage.Pixel,
+        byte[] optResolveBlend = ProgramCompile(Path.Combine(root, "SMAA", "SMAA.hlsl"), "SMAAResolvePS", DxcShaderStage.Pixel,
             new DxcDefine { Name = "SMAA_DEBUG_MODE", Value = "2" });
         byte[] refEdgeVS, refEdgePS, refBlendVS, refBlendPS, refResolveVS, refResolvePS;
         string oldCwd = Environment.CurrentDirectory;
@@ -915,8 +915,8 @@ internal sealed class D3D12Renderer : IDisposable
         _pattern = TestPattern.Create(_width, _height);
         UploadAndWait(_pattern, _width, _height, 4, Format.R8G8B8A8_UNorm, _colorTex,
             ResourceStates.AllShaderResource);
-        byte[] areaRef = File.ReadAllBytes(Path.Combine(root, "Reference", "AreaTex.rg8"));
-        byte[] searchRef = File.ReadAllBytes(Path.Combine(root, "Reference", "SearchTex.r8"));
+        byte[] areaRef = File.ReadAllBytes(Path.Combine(root, "SMAA", "AreaTex.rg8"));
+        byte[] searchRef = File.ReadAllBytes(Path.Combine(root, "SMAA", "SearchTex.r8"));
         UploadAndWait(areaRef, 160, 560, 2, Format.R8G8_UNorm, _areaOpt, ResourceStates.AllShaderResource);
         UploadAndWait(searchRef, 64, 16, 1, Format.R8_UNorm, _searchOpt, ResourceStates.AllShaderResource);
         UploadAndWait(areaRef, 160, 560, 2, Format.R8G8_UNorm, _areaRef, ResourceStates.AllShaderResource);
