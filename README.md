@@ -4,7 +4,7 @@
 
 # SMAA-ACE
 
-**SMAA 1x in HLSL for D3D12, Vulkan, and SM5/DXBC.** ACE stands for Active Compaction of Edges: the shader keeps the original MIT SMAA math and lookup textures and replaces the fullscreen edge and blend-weight passes with a compacted compute pipeline.
+**SMAA-ACE is SMAA 1x in HLSL for D3D12, Vulkan, and SM5/DXBC.** ACE stands for Active Compaction of Edges: the shader keeps the original MIT SMAA math and lookup textures and replaces the fullscreen edge and blend-weight passes with a compacted compute pipeline.
 
 `D3D12` · `Vulkan` · `D3D11/SM5` · `HLSL` · `SMAA 1x` · `MIT`
 
@@ -108,7 +108,7 @@ Flat regions are exact on the 3D scene.
 
 ### Low-contrast edge mode (opt-in)
 
-`--low-contrast-edge` enables a separate edge detector for low-contrast jaggies. It combines a luma-adaptive threshold with CMAA-style local contrast suppression and an adjacent-extreme LCA term. It does not add a blur, smoothing, or sharpening pass.
+`--low-contrast-edge` enables a separate edge detector for low-contrast jaggies. It combines a luma-adaptive threshold with CMAA-style local contrast suppression and an adjacent-extreme LCA term.
 
 | Scene | Stock | Low-contrast | Original 2013 |
 | --- | ---: | ---: | ---: |
@@ -117,7 +117,7 @@ Flat regions are exact on the 3D scene.
 | 4K 3D | 0.169 ms | 0.248 ms | 0.352 ms |
 | 4K 2D stress | 0.545 ms | 0.620-0.641 ms | 0.858 ms |
 
-The mode costs roughly **40-55% more than the optimized stock path in 3D**, concentrated in edge detection: the 4K edge pass rises from 0.058 ms to 0.129 ms because it reads a 3x3 neighborhood and detects more edges. It remains faster than the original 2013 path at the tested resolutions.
+The LCE mode is 21-32% faster than the original SMAA but 40-55% slower than the default SMAA-ACE optimized path in 3D.
 
 Against 4x SSAA at 4K 3D, it lowers MAE from 0.00033556 to 0.00032792 and pixels above 10/255 from 0.2220% to 0.1965%, with flat regions unchanged. The tradeoff is a small reduction in high-frequency energy (slightly softer edges) and a small increase in pixels changed by just over 1/255. The thresholds were tuned on the procedural demo scenes; real-content results may vary. It is **off by default**.
 
@@ -275,18 +275,17 @@ dotnet run --project Demo/Demo.csproj -c Release -- --width 3840 --height 2160 -
 - **Color-only edge detection.** The shader does not use depth, normals, or motion vectors.
 - **Two LUTs are required.** The area and search textures are part of the original MIT SMAA distribution and are included in `Reference/`.
 - **Not bit-identical to the 2013 reference.** Compute evaluation order changes the last bit on a small number of pixels. The measured maximum is 1/255 on 3D and 2/255 on 2D; flat regions are exact.
-- **The edge pass is not universally faster.** It is neutral on the 3D corridor and slightly slower on the dense 2D stress pattern. The total win comes primarily from compacting blend work.
 - **Performance is content-dependent.** Sparse-edge scenes benefit most. Dense, high-frequency content sees a smaller gain.
-- **Benchmarks are one GPU and one demo.** The numbers are not a universal guarantee across GPUs, drivers, resolutions, or engines.
 - **R8G8 UAV support is not universal.** Some older devices do not support RG8 storage images; use an RGBA8 edge texture and adjust the image format as noted in [docs/INTEGRATION.md](docs/INTEGRATION.md).
 - **The SM5/DXBC path has no bundled host.** All stock and low-contrast entry points compile with FXC to shader model 5, but this repository includes no D3D11 renderer, resource setup, or runtime validation for that path.
 - **Vulkan compiles, but is not runtime-validated here.** The shader emits Vulkan bindings with `SMAA_VULKAN=1` and compiles to SPIR-V with both compaction paths. The bundled demo is D3D12-only, so Vulkan descriptors, barriers, and presentation are left to the host.
 - **Low-contrast mode is tuned on procedural scenes.** Validate it on your own content before shipping it.
 
-## References
+## References & Credits
 
 - Jorge Jimenez, Jose I. Echevarria, Tiago Sousa, and Diego Gutierrez. "SMAA: Enhanced Subpixel Morphological Antialiasing." *Computer Graphics Forum*, 2012.
 - Original SMAA project: <https://github.com/iryoku/smaa>
+- PoisonLoca for creating the graphics for this repository 
 
 ## License
 
