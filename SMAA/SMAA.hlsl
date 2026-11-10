@@ -259,6 +259,17 @@
 
 /*=============================================================================
     Constant buffer
+
+    SearchParams.x is the edge threshold. These are recommended starting
+    points, not code or hard limits:
+
+    // #######################################################################
+    // 720p    : 0.080 Low  | 0.090 Medium | 0.100 High
+    // 1080p  : 0.070 Low  | 0.075 Medium | 0.080 High
+    // 1440p  : 0.055 Low  | 0.065 Medium | 0.075 High
+    // 2160p  : 0.050 Low  | 0.060 Medium | 0.070 High
+    // Universal: 0.07 - 0.08
+    // #######################################################################
 =============================================================================*/
 
 SMAA_BINDING(0, 0)
@@ -267,7 +278,8 @@ cbuffer SMAAParams SMAA_REGISTER(b, 0)
     // xy = screen size in pixels, zw = 1 / screen size.
     float4 ScreenParams;
 
-    // x = edge threshold, y = max search steps, z = max diagonal steps,
+    // x = edge threshold (see recommended starting points above),
+    // y = max search steps, z = max diagonal steps,
     // w = corner rounding percentage (0..100).
     float4 SearchParams;
 
@@ -275,12 +287,16 @@ cbuffer SMAAParams SMAA_REGISTER(b, 0)
     // y = debug output (0 = none, 1 = edges, 2 = blend weights),
     // z = low-contrast edge feature flags (1 = adaptive threshold,
     //     4 = CMAA local contrast, 8 = CMAA/SMAA LCA synergy),
-    // w reserved.
+    // w = 1 enables the luma-adaptive threshold in the canonical edge pass.
     int4 Options;
 
     // x = adaptive threshold in dark areas, y = in bright areas,
     // z = adaptive threshold floor, w = CMAA/SMAA LCA synergy.
     float4 LowContrastParams;
+
+    // Canonical-path luma adaptation: x = dark threshold, y = bright
+    // threshold, z = dark-end luma, w = bright-end luma.
+    float4 AdaptiveParams;
 };
 
 /*=============================================================================
@@ -395,6 +411,23 @@ float SMAAMetric(float3 a, float3 b)
     return max(max(t.r, t.g), t.b);
 }
 
+// Local threshold for the canonical edge pass. The center sample is enough
+// because the threshold changes slowly across a smooth luminance ramp; using
+// it avoids the extra taps that the low-contrast path needs.
+float SMAAAdaptiveThreshold(float3 center)
+{
+    if (Options.w == 0)
+    {
+        return SearchParams.x;
+    }
+
+    float luma = dot(center, float3(0.2126, 0.7152, 0.0722));
+    float range = max(AdaptiveParams.w - AdaptiveParams.z, 1e-4);
+    float t = saturate((luma - AdaptiveParams.z) / range);
+    t = t * t * (3.0 - 2.0 * t);
+    return lerp(AdaptiveParams.x, AdaptiveParams.y, t);
+}
+
 // Low-contrast edge detection. Uses a full 3x3 neighborhood so it can apply a
 // luma-adaptive threshold and CMAA-style local contrast suppression. The
 // canonical path below is left untouched for the default mode.
@@ -496,12 +529,12 @@ float2 SMAAColorEdgeDetectionLowContrastCore(int2 pixel, Texture2D<float4> color
 // can store zeros without branching on a discard.
 float2 SMAAColorEdgeDetectionCore(int2 pixel, Texture2D<float4> colorTex, out bool hasEdges)
 {
-    const float threshold = SearchParams.x;
     int2 size = int2(ScreenParams.xy);
     int2 p = clamp(pixel, int2(0, 0), size - 1);
 
     float4 delta;
     float3 c = colorTex.Load(int3(p, 0)).rgb;
+    const float threshold = SMAAAdaptiveThreshold(c);
 
     float3 cLeft = colorTex.Load(int3(clamp(p + int2(-1, 0), int2(0, 0), size - 1), 0)).rgb;
     delta.x = SMAAMetric(c, cLeft);

@@ -13,7 +13,7 @@ cbuffer SceneCB : register(b0)
     float4 gCamRight;   // xyz: camera right
     float4 gCamUp;      // xyz: camera up
     float4 gCamForward; // xyz: camera forward
-    float4 gCamParams;  // x: tan(half fov), y: aspect ratio
+    float4 gCamParams;  // x: tan(half fov), y: aspect ratio, z: exposure, w: contrast
 };
 
 static const int MAX_STEPS = 110;
@@ -248,8 +248,16 @@ float4 ScenePS(SceneVSOut input) : SV_Target
         color = shadeScene(p, n, hit.y, rd, hit.x);
     }
 
+    // Exposure is applied before the tonemap so the lighting presets behave
+    // like a camera or time-of-day change. Contrast is applied after gamma so
+    // it directly compresses the display-referred signal that SMAA sees.
+    float exposure = gCamParams.z > 0.0 ? gCamParams.z : 1.0;
+    float contrast = gCamParams.w > 0.0 ? gCamParams.w : 1.0;
+    color *= exposure;
+
     // Filmic-ish tonemap, then gamma-space output for the UNORM color target.
     color = 1.0 - exp(-color * 1.35);
     color = pow(saturate(color), 1.0 / 2.2);
+    color = saturate(0.5 + (color - 0.5) * contrast);
     return float4(color, 1.0);
 }

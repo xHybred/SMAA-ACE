@@ -30,16 +30,26 @@ The supplied LUT binaries are:
 
 ## D3D12 bindings
 
-Constant buffer, space 0:
+Constant buffer, space 0.
+
+Recommended `SearchParams.x` starting points, not code or hard limits:
+
+> - 720p: 0.080 Low, 0.090 Medium, 0.100 High
+> - 1080p: 0.070 Low, 0.075 Medium, 0.080 High
+> - 1440p: 0.055 Low, 0.065 Medium, 0.075 High
+> - 2160p: 0.050 Low, 0.060 Medium, 0.070 High
+> - Universal: 0.07 - 0.08
 
 ```hlsl
 cbuffer SMAAParams : register(b0)
 {
     float4 ScreenParams;      // (width, height, 1/width, 1/height)
-    float4 SearchParams;      // (0.10, 32, 16, 25)
+    float4 SearchParams;      // (0.07, 32, 16, 25)
     int4   Options;           // x: edge mode (0 max channel, 1 luma),
-                              // y: debug (0/1/2), z: low-contrast flags, w: reserved
+                              // y: debug (0/1/2), z: low-contrast flags,
+                              // w: 1 enables the canonical luma-adaptive threshold
     float4 LowContrastParams; // (threshold low, threshold high, threshold floor, CMAA synergy)
+    float4 AdaptiveParams;    // (dark threshold, bright threshold, dark luma, bright luma)
 };
 ```
 
@@ -130,7 +140,13 @@ Enable it by dispatching `SMAAEdgeDetectionLowContrastCS` instead of `SMAAEdgeDe
 
 Set `LowContrastParams` to `(low, high, floor, synergy)`. The demo uses `(0.030, 0.095, 0.035, -0.45)` and flag value 13. The mode is off by default; `Options.z = 0` means the stock path.
 
-The mode is roughly 40-55% slower than optimized stock in 3D because it reads nine color texels per pixel and finds more active edges. It uses no blur, smoothing, or sharpening pass. The stock entry point does not call any low-contrast code, so DXC removes it from the stock PSO. Hosts that only use stock SMAA do not need to compile the low-contrast entry point at all; the demo compiles it only when `--low-contrast-edge` is present.
+### Luma-adaptive threshold
+
+The stock `SMAAEdgeDetectionCS` entry point can vary its threshold with the center pixel's luma. Set `Options.w = 1` and fill `AdaptiveParams` with `(dark threshold, bright threshold, dark luma, bright luma)`. The shader interpolates with a smoothstep between the two luma endpoints. The demo defaults are `(0.045, 0.090, 0.150, 0.380)`.
+
+This is the canonical detector, not the low-contrast entry point. It adds one luma dot product and a smoothstep per edge candidate, reads no additional texels, and changes neither the edge texture nor the blend path. When `Options.w = 0`, `SearchParams.x` is used exactly as before. The low-contrast entry point keeps its own `LowContrastParams` thresholds. Tune `AdaptiveParams` on your own content; the defaults were selected on the procedural SDR demo scenes.
+
+The low-contrast mode is roughly 40-55% slower than optimized stock in 3D because it reads nine color texels per pixel and finds more active edges. It uses no blur, smoothing, or sharpening pass. The stock entry point does not call any low-contrast code, so DXC removes it from the stock PSO. Hosts that only use stock SMAA do not need to compile the low-contrast entry point at all; the demo compiles it only when `--low-contrast-edge` is present.
 
 ### Compile-time option specialization
 

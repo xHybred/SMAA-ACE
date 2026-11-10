@@ -9,3 +9,6 @@ publish/
 # Local captures and logs
 *.bmp
 *.log
+
+# Generated quality sweeps
+Demo/QualityResults*/

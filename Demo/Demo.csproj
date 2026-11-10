@@ -8,6 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="QualityHarness\**" />
     <None Include="DemoShaders.hlsl" CopyToOutputDirectory="PreserveNewest" />
     <None Include="DemoScene.hlsl" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\SMAA\SMAA.hlsl" Link="SMAA\SMAA.hlsl" CopyToOutputDirectory="PreserveNewest" />

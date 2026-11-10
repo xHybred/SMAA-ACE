@@ -11,7 +11,7 @@
 - **Post-processing:** external overlays and injectors were disabled.
 - **Screenshots:** the in-app `--screenshot` capture is read back from the render target before `Present`.
 - **Debug layer:** the D3D12 debug layer is enabled by default. `--no-debug-layer` disables it for benchmarking. GPU timestamp results are reported both ways; the debug layer does not materially change GPU pass cost but does add host-side validation overhead.
-- **Settings:** each mode runs with the same scene and SMAA parameters: threshold 0.10, 32 search steps, 16 diagonal steps, and 25% corner rounding. Default edge mode is 0 (max-channel). The low-contrast edge mode is off unless a table says otherwise.
+- **Settings:** each mode runs with the same scene and SMAA parameters: threshold 0.10, 32 search steps, 16 diagonal steps, and 25% corner rounding. The demo's shipping default is 0.07; these captures keep 0.10 for comparability with earlier runs. Default edge mode is 0 (max-channel). The low-contrast edge mode is off unless a table says otherwise.
 - **Compile-time specialization:** the demo compiles one edge shader per edge mode and one resolve shader per debug view, defining `SMAA_EDGE_MODE` and `SMAA_DEBUG_MODE`. When `--low-contrast-edge` is present it also compiles the separate low-contrast edge entry point; otherwise that shader is never compiled and the stock entry point does not contain its code. This folds the `Options.x` and `Options.y` branches for the standard demo path. There is no runtime toggle between specialized and generic shaders. Standalone users that leave the macros undefined retain the runtime `Options` behavior.
 
 ## 3D corridor scene results

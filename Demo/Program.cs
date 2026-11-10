@@ -28,6 +28,8 @@ internal static class Program
     private static string? _autoScreenshotPath;
     private static int _captureFrame = 30;
     private static float? _thresholdOverride;
+    private static float _exposure = 1.0f;
+    private static float _contrast = 1.0f;
     private static int _initialDebug = 0;
     private static int _edgeMode = 0;
     private static int _lowContrastFlags = 0;
@@ -35,6 +37,11 @@ internal static class Program
     private static float _thresholdLow = 0.030f;
     private static float _thresholdHigh = 0.095f;
     private static float _thresholdFloor = 0.035f;
+    private static bool _adaptiveEdge;
+    private static float _adaptiveDark = 0.045f;
+    private static float _adaptiveBright = 0.090f;
+    private static float _adaptiveLumaLow = 0.150f;
+    private static float _adaptiveLumaHigh = 0.380f;
     private static float _cmaaSynergy = -0.45f;
     private static bool _debugLayer = true;
     private static IntPtr _hwnd;
@@ -101,6 +108,8 @@ internal static class Program
     private const int VK_2 = 0x32;
     private const int VK_3 = 0x33;
     private const int VK_4 = 0x34;
+    private const int VK_OEM_4 = 0xDB; // [
+    private const int VK_OEM_6 = 0xDD; // ]
     private const int VK_F1 = 0x70;
     private const int VK_F2 = 0x71;
     private const int VK_F3 = 0x72;
@@ -254,6 +263,8 @@ internal static class Program
                 else if (key == VK_F4) ToggleScene();      // F4 2D/3D
                 else if (key == VK_F5) ToggleDebug(1);     // F5 edges
                 else if (key == VK_F6) ToggleDebug(2);     // F6 blend weights
+                else if (key == VK_OEM_4) AdjustThreshold(-1); // [ decrease threshold
+                else if (key == VK_OEM_6) AdjustThreshold(1);  // ] increase threshold
                 else if (key == VK_F12) _renderer?.RequestScreenshot();
                 return IntPtr.Zero;
             case WM_KEYUP:
@@ -303,10 +314,66 @@ internal static class Program
         _renderer.SetScene(_scene);
     }
 
-    // SMAA's standard threshold. A 2x supersampled 3D reference showed 0.10
-    // is closer to ground truth than 0.075/0.05, so keep the canonical value
-    // and expose --threshold for experimentation instead of changing it here.
-    private const float DefaultThreshold = 0.10f;
+    private const float MinThreshold = 0.005f;
+    private const float MaxThreshold = 0.5f;
+    private const float ThresholdStep = 0.005f;
+
+    private static void AdjustThreshold(int direction)
+    {
+        if (_renderer == null) return;
+
+        float next = Math.Clamp(_renderer.Threshold + direction * ThresholdStep,
+            MinThreshold, MaxThreshold);
+        next = MathF.Round(next, 3);
+        if (next == _renderer.Threshold) return;
+
+        _renderer.Threshold = next;
+        Log($"Threshold -> {next:F3}");
+        _renderer.UpdateTitle();
+    }
+
+    // ###########################################################################
+    // RECOMMENDED STARTING POINTS - not code, not enforced
+    //   720p  : 0.080 Low  | 0.090 Medium | 0.100 High
+    //   1080p : 0.070 Low  | 0.075 Medium | 0.080 High
+    //   1440p : 0.055 Low  | 0.065 Medium | 0.075 High
+    //   2160p : 0.050 Low  | 0.060 Medium | 0.070 High
+    //   Universal: 0.07 - 0.08
+    // These are perceptual starting points from the demo corridor. The active
+    // value is shown in the window title and can be adjusted with [ and ].
+    // ###########################################################################
+    private const float DefaultThreshold = 0.07f;
+
+    private static bool ApplyScenePreset(string name, out string? error)
+    {
+        error = null;
+        switch (name)
+        {
+            case "day":
+                _exposure = 1.0f;
+                _contrast = 1.0f;
+                return true;
+            case "night":
+                _exposure = 0.18f;
+                _contrast = 1.0f;
+                return true;
+            case "bright":
+                _exposure = 1.9f;
+                _contrast = 1.0f;
+                return true;
+            case "lowcontrast":
+                _exposure = 1.0f;
+                _contrast = 0.45f;
+                return true;
+            case "night-lowcontrast":
+                _exposure = 0.18f;
+                _contrast = 0.60f;
+                return true;
+            default:
+                error = $"Unknown --scene-preset value '{name}', using exposure {_exposure:F2} contrast {_contrast:F2}";
+                return false;
+        }
+    }
 
     private static void TogglePause()
     {
@@ -338,6 +405,24 @@ internal static class Program
                         System.Globalization.CultureInfo.InvariantCulture, out float threshold))
                     _thresholdOverride = Math.Clamp(threshold, 0.005f, 0.5f);
             }
+            else if (args[i] == "--scene-preset" && i + 1 < args.Length)
+            {
+                string preset = args[++i].Trim().ToLowerInvariant();
+                if (!ApplyScenePreset(preset, out string? presetError))
+                    sceneWarning = presetError;
+            }
+            else if (args[i] == "--exposure" && i + 1 < args.Length)
+            {
+                if (float.TryParse(args[++i], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out float value))
+                    _exposure = Math.Clamp(value, 0.01f, 16.0f);
+            }
+            else if (args[i] == "--contrast" && i + 1 < args.Length)
+            {
+                if (float.TryParse(args[++i], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out float value))
+                    _contrast = Math.Clamp(value, 0.05f, 2.0f);
+            }
             else if (args[i] == "--debug" && i + 1 < args.Length)
             {
                 if (int.TryParse(args[++i], out int debug))
@@ -359,6 +444,31 @@ internal static class Program
             else if (args[i] == "--adaptive-threshold") _lowContrastFlags |= 1;
             else if (args[i] == "--cmaa-lca") _lowContrastFlags |= 4;
             else if (args[i] == "--cmaa-synergy") _lowContrastFlags |= 8;
+            else if (args[i] == "--adaptive-edge") _adaptiveEdge = true;
+            else if (args[i] == "--adaptive-dark" && i + 1 < args.Length)
+            {
+                if (float.TryParse(args[++i], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out float value))
+                    _adaptiveDark = Math.Clamp(value, 0.0f, 0.5f);
+            }
+            else if (args[i] == "--adaptive-bright" && i + 1 < args.Length)
+            {
+                if (float.TryParse(args[++i], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out float value))
+                    _adaptiveBright = Math.Clamp(value, 0.0f, 0.5f);
+            }
+            else if (args[i] == "--adaptive-luma-low" && i + 1 < args.Length)
+            {
+                if (float.TryParse(args[++i], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out float value))
+                    _adaptiveLumaLow = Math.Clamp(value, 0.0f, 1.0f);
+            }
+            else if (args[i] == "--adaptive-luma-high" && i + 1 < args.Length)
+            {
+                if (float.TryParse(args[++i], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out float value))
+                    _adaptiveLumaHigh = Math.Clamp(value, 0.0f, 1.0f);
+            }
             else if (args[i] == "--low-contrast-flags" && i + 1 < args.Length)
             {
                 if (int.TryParse(args[++i], out int flags)) _lowContrastFlags = flags & 13;
@@ -444,15 +554,26 @@ internal static class Program
             _renderer = new D3D12Renderer(_hwnd, _width, _height, _scene, _debugLayer, _lowContrastEdge);
             _renderer.Mode = Math.Clamp(_initialMode, 0, 2);
             _renderer.Threshold = _thresholdOverride ?? DefaultThreshold;
+            _renderer.Exposure = _exposure;
+            _renderer.Contrast = _contrast;
             _renderer.EdgeMode = Math.Clamp(_edgeMode, 0, 1);
             _renderer.DebugMode = _initialDebug;
             _renderer.LowContrastFlags = _lowContrastFlags;
             _renderer.ThresholdLow = _thresholdLow;
             _renderer.ThresholdHigh = _thresholdHigh;
             _renderer.ThresholdFloor = _thresholdFloor;
+            _renderer.AdaptiveEdge = _adaptiveEdge;
+            _renderer.AdaptiveDark = _adaptiveDark;
+            _renderer.AdaptiveBright = _adaptiveBright;
+            _renderer.AdaptiveLumaLow = _adaptiveLumaLow;
+            _renderer.AdaptiveLumaHigh = _adaptiveLumaHigh;
             _renderer.CmaaSynergy = _cmaaSynergy;
             Log($"Edge mode -> {_renderer.EdgeModeName} ({_renderer.EdgeMode})");
+            Log($"Scene exposure -> {_renderer.Exposure:F2}, contrast -> {_renderer.Contrast:F2}");
             Log($"Low contrast edge mode -> {(_renderer.LowContrastFlags != 0 ? "on" : "off")} (flags {_renderer.LowContrastFlags})");
+            Log($"Adaptive edge threshold -> {(_renderer.AdaptiveEdge ? "on" : "off")} " +
+                $"(dark {_renderer.AdaptiveDark:F3}, bright {_renderer.AdaptiveBright:F3}, " +
+                $"luma {_renderer.AdaptiveLumaLow:F2}-{_renderer.AdaptiveLumaHigh:F2})");
             _renderer.SetScene(_scene);
             _renderer.UpdateTitle();
             if (!string.IsNullOrEmpty(_autoScreenshotPath))
@@ -565,12 +686,19 @@ internal sealed class D3D12Renderer : IDisposable
 
     public int Mode { get; set; }
     public int DebugMode { get; set; }
-    public float Threshold { get; set; } = 0.10f;
+    public float Threshold { get; set; } = 0.07f;
     public int EdgeMode { get; set; }
+    public float Exposure { get; set; } = 1.0f;
+    public float Contrast { get; set; } = 1.0f;
     public int LowContrastFlags { get; set; }
     public float ThresholdLow { get; set; } = 0.030f;
     public float ThresholdHigh { get; set; } = 0.095f;
     public float ThresholdFloor { get; set; } = 0.035f;
+    public bool AdaptiveEdge { get; set; }
+    public float AdaptiveDark { get; set; } = 0.045f;
+    public float AdaptiveBright { get; set; } = 0.090f;
+    public float AdaptiveLumaLow { get; set; } = 0.150f;
+    public float AdaptiveLumaHigh { get; set; } = 0.380f;
     public float CmaaSynergy { get; set; } = -0.45f;
 
     public string SceneName => _scene == SceneMode.TestPattern2D ? "2DDemo" : "3DDemo";
@@ -1292,7 +1420,7 @@ internal sealed class D3D12Renderer : IDisposable
             CamRight = new Vector4(right, 0.0f),
             CamUp = new Vector4(up, 0.0f),
             CamForward = new Vector4(forward, 0.0f),
-            CamParams = new Vector4(tanHalfFov, (float)_width / _height, 0.0f, 0.0f)
+            CamParams = new Vector4(tanHalfFov, (float)_width / _height, Exposure, Contrast)
         };
         WriteStruct(_sceneCb, p);
     }
@@ -1411,8 +1539,9 @@ internal sealed class D3D12Renderer : IDisposable
             OptionsX = EdgeMode,
             OptionsY = DebugMode,
             OptionsZ = LowContrastFlags,
-            OptionsW = 0,
-            LowContrastParams = new Vector4(ThresholdLow, ThresholdHigh, ThresholdFloor, CmaaSynergy)
+            OptionsW = AdaptiveEdge ? 1 : 0,
+            LowContrastParams = new Vector4(ThresholdLow, ThresholdHigh, ThresholdFloor, CmaaSynergy),
+            AdaptiveParams = new Vector4(AdaptiveDark, AdaptiveBright, AdaptiveLumaLow, AdaptiveLumaHigh)
         };
         WriteStruct(_optCb, p);
     }
@@ -1457,7 +1586,9 @@ internal sealed class D3D12Renderer : IDisposable
         string debug = DebugMode == 0 ? "debug off" : $"debug {DebugMode}";
         string pause = _paused ? " | PAUSED" : string.Empty;
         string edge = Mode == 0 ? $" | edge {EdgeModeName}" : string.Empty;
-        string text = $"SMAA {SceneName} | {ModeName}{edge} | {debug} | {_width}x{_height} | total {Median(_totalMs):F3} ms{pause}";
+        string threshold = Mode == 0 ? $" | thr {Threshold:F3}" : string.Empty;
+        string adaptive = Mode == 0 && AdaptiveEdge ? " | adaptive" : string.Empty;
+        string text = $"SMAA {SceneName} | {ModeName}{edge}{threshold}{adaptive} | {debug} | {_width}x{_height} | total {Median(_totalMs):F3} ms{pause}";
         Program.SetWindowText(_hwnd, text);
     }
 
@@ -1513,6 +1644,7 @@ internal struct SmaaParams
     public int OptionsZ;
     public int OptionsW;
     public Vector4 LowContrastParams;
+    public Vector4 AdaptiveParams;
 }
 
 [StructLayout(LayoutKind.Sequential)]
