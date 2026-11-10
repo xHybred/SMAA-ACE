@@ -142,7 +142,7 @@ Set `LowContrastParams` to `(low, high, floor, synergy)`. The demo uses `(0.030,
 
 ### Luma-adaptive threshold
 
-The stock `SMAAEdgeDetectionCS` entry point can vary its threshold with the center pixel's luma. Set `Options.w = 1` and fill `AdaptiveParams` with `(dark threshold, bright threshold, dark luma, bright luma)`. The shader interpolates with a smoothstep between the two luma endpoints. The demo defaults are `(0.045, 0.090, 0.150, 0.380)`.
+The stock `SMAAEdgeDetectionCS` entry point can vary its threshold with the center pixel's luma. Set `Options.w = 1` and fill `AdaptiveParams` with `(dark threshold, bright threshold, dark luma, bright luma)`. The shader interpolates with a smoothstep between the two luma endpoints. The demo defaults are `(0.045, 0.070, 0.150, 0.380)`.
 
 This is the canonical detector, not the low-contrast entry point. It adds one luma dot product and a smoothstep per edge candidate, reads no additional texels, and changes neither the edge texture nor the blend path. When `Options.w = 0`, `SearchParams.x` is used exactly as before. The low-contrast entry point keeps its own `LowContrastParams` thresholds. Tune `AdaptiveParams` on your own content; the defaults were selected on the procedural SDR demo scenes.
 

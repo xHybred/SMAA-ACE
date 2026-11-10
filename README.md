@@ -121,19 +121,19 @@ Flat regions are exact on the 3D scene.
 
 ### Luma-adaptive threshold (opt-in)
 
-`--adaptive-edge` varies the stock detector's threshold with the center pixel's luma: 0.045 in dark regions, 0.090 in bright regions, with a smoothstep between luma 0.150 and 0.380. Dark scenes gain most; bright and daytime scenes stay close to the fixed-threshold results below. The non-adaptive stock default is 0.07.
+`--adaptive-edge` varies the stock detector's threshold with the center pixel's luma: 0.045 in dark regions, 0.070 in bright regions, with a smoothstep between luma 0.150 and 0.380. The bright end is anchored to the shipping threshold, so the curve never raises the threshold above the stock value. Dark scenes gain most; daytime, bright, and low-contrast content stays close to the fixed-threshold results below.
 
 Mean absolute error against 2x2 supersampling on the demo scenes:
 
-| Scene | 1080p 0.10 | 1080p adaptive | 4K 0.10 | 4K adaptive |
+| Scene | 1080p 0.07 | 1080p adaptive | 4K 0.07 | 4K adaptive |
 | --- | ---: | ---: | ---: | ---: |
-| Day | 0.00067241 | 0.00067315 | 0.00032732 | 0.00032275 |
-| Night | 0.00038536 | 0.00036417 | 0.00019562 | 0.00018357 |
-| Bright | 0.00078991 | 0.00079608 | 0.00037453 | 0.00037333 |
-| Low contrast | 0.00032239 | 0.00031940 | 0.00016439 | 0.00016283 |
-| Night, low contrast | 0.00023142 | 0.00023077 | 0.00012236 | 0.00012199 |
+| Day | 0.00067902 | 0.00068847 | 0.00032173 | 0.00032282 |
+| Night | 0.00036994 | 0.00036348 | 0.00018839 | 0.00018340 |
+| Bright | 0.00081905 | 0.00081952 | 0.00037684 | 0.00037712 |
+| Low contrast | 0.00030930 | 0.00030930 | 0.00015802 | 0.00015802 |
+| Night, low contrast | 0.00022989 | 0.00022925 | 0.00012102 | 0.00012071 |
 
-At 1080p the day and bright regressions are under 0.8%, while night improves by 5.5%. At 4K every scene improves. The low-contrast presets still gain more from the separate low-contrast detector, because their average luma is high and a luma-only curve cannot tell them apart. The adaptive path adds one dot product and a smoothstep per edge candidate and reads no extra texels. It is **off by default**.
+The overall result is close to flat 0.07: at 1080p adaptive is 0.12% worse on average, and at 4K it is 0.34% better. Nearly all of the gain is in the night scene, which improves by 1.8% at 1080p and 2.6% at 4K. Day and bright stay within 1.4% and 0.1% respectively, and low-contrast content is unchanged because its luma maps to the 0.070 bright end. The low-contrast presets still gain more from the separate low-contrast detector. The adaptive path adds one dot product and a smoothstep per edge candidate and reads no extra texels. It is **off by default**.
 
 ### Low-contrast edge mode (opt-in)
 
@@ -250,7 +250,7 @@ For Vulkan SPIR-V, add `-spirv -DSMAA_VULKAN=1`. Both the SM6 wave path and the 
 | `--low-contrast-edge` | Enable the optional low-contrast edge mode | off |
 | `--adaptive-edge` | Enable the canonical luma-adaptive threshold | off |
 | `--adaptive-dark <0-0.5>` | Threshold at and below the dark luma endpoint | 0.045 |
-| `--adaptive-bright <0-0.5>` | Threshold at and above the bright luma endpoint | 0.090 |
+| `--adaptive-bright <0-0.5>` | Threshold at and above the bright luma endpoint | 0.070 |
 | `--adaptive-luma-low <0-1>` | Dark luma endpoint | 0.150 |
 | `--adaptive-luma-high <0-1>` | Bright luma endpoint | 0.380 |
 | `--scene <3d\|2d>` | 3d = raymarched corridor, 2d = test pattern | 3d |

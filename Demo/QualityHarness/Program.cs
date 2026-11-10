@@ -657,7 +657,7 @@ internal static class Program
             int timeoutMs = 300_000;
             bool adaptive = false;
             double adaptiveDark = 0.045;
-            double adaptiveBright = 0.090;
+            double adaptiveBright = 0.070;
             double adaptiveLumaLow = 0.150;
             double adaptiveLumaHigh = 0.380;
 

@@ -39,7 +39,7 @@ internal static class Program
     private static float _thresholdFloor = 0.035f;
     private static bool _adaptiveEdge;
     private static float _adaptiveDark = 0.045f;
-    private static float _adaptiveBright = 0.090f;
+    private static float _adaptiveBright = 0.070f;
     private static float _adaptiveLumaLow = 0.150f;
     private static float _adaptiveLumaHigh = 0.380f;
     private static float _cmaaSynergy = -0.45f;
@@ -696,7 +696,7 @@ internal sealed class D3D12Renderer : IDisposable
     public float ThresholdFloor { get; set; } = 0.035f;
     public bool AdaptiveEdge { get; set; }
     public float AdaptiveDark { get; set; } = 0.045f;
-    public float AdaptiveBright { get; set; } = 0.090f;
+    public float AdaptiveBright { get; set; } = 0.070f;
     public float AdaptiveLumaLow { get; set; } = 0.150f;
     public float AdaptiveLumaHigh { get; set; } = 0.380f;
     public float CmaaSynergy { get; set; } = -0.45f;
